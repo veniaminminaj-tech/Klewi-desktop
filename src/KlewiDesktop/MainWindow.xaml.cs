@@ -193,16 +193,23 @@ Return a strict JSON object only, with width 16 or 32, height 16 or 32, a palett
     private async void ChatInput_KeyDown(object s, KeyEventArgs e) { if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control) { e.Handled = true; await SendMessage(); } }
     private async Task SendMessage()
     {
-        var prompt = ChatInput.Text.Trim(); if (prompt.Length == 0 || busy) return;
+        var prompt = ChatInput.Text.Trim();
+        if (prompt.Length == 0 || busy) return;
         if (apiKey.Length == 0) { AddMessage("Klewi", "Open Settings and configure an AI provider first."); return; }
-        ChatInput.Clear(); AddMessage("You", prompt); var pending = AddMessage("Klewi", "Thinking…"); busy = true;
+
+        ChatInput.Clear();
+        AddMessage("You", prompt);
+        var pending = AddMessage("Klewi", "Thinking…");
+        busy = true;
         var attachedContext = pendingFileContext;
         pendingFileContext = "";
-        try { pending.Text = await AskProvider(prompt + (attachedContext.Length == 0 ? "" : "
-
-User-selected project file:
-" + attachedContext) + (projectPath is null ? "" : $"
-Workspace folder: {projectPath}. Only the attached file content is available; do not claim to have read other files.")); }
+        try
+        {
+            var fullPrompt = prompt
+                + (attachedContext.Length == 0 ? "" : "\n\nUser-selected project file:\n" + attachedContext)
+                + (projectPath is null ? "" : $"\nWorkspace folder: {projectPath}. Only the attached file content is available; do not claim to have read other files.");
+            pending.Text = await AskProvider(fullPrompt);
+        }
         catch (Exception ex) { pending.Text = "Request failed: " + ex.Message; }
         finally { busy = false; ChatScroll.ScrollToEnd(); }
     }
@@ -321,14 +328,18 @@ Workspace folder: {projectPath}. Only the attached file content is available; do
     private async void TerminalInput_KeyDown(object s, KeyEventArgs e) { if (e.Key == Key.Enter) { e.Handled = true; await RunCommand(); } }
     private async Task RunCommand()
     {
-        var cmd = TerminalInput.Text.Trim(); if (cmd.Length == 0) return; TerminalInput.Clear(); TerminalOutput.Text += $"
-> {cmd}
-";
+        var cmd = TerminalInput.Text.Trim();
+        if (cmd.Length == 0) return;
+        TerminalInput.Clear();
+        TerminalOutput.Text += $"\n> {cmd}\n";
+
         var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "pwd", "dir", "ls", "dotnet", "python", "python3", "node", "npm", "git" };
-        var words = SplitArgs(cmd); var exe = words[0].ToLowerInvariant();
-        if (!allowed.Contains(exe)) { TerminalOutput.Text += "Blocked: command is not on the allowlist.
-"; return; }
-        bool permitted = exe switch {
+        var words = SplitArgs(cmd);
+        var exe = words[0].ToLowerInvariant();
+        if (!allowed.Contains(exe)) { TerminalOutput.Text += "Blocked: command is not on the allowlist.\n"; return; }
+
+        bool permitted = exe switch
+        {
             "pwd" or "dir" or "ls" => words.Count == 1,
             "git" => cmd.Equals("git status", StringComparison.OrdinalIgnoreCase),
             "dotnet" => cmd.Equals("dotnet --info", StringComparison.OrdinalIgnoreCase) || cmd.Equals("dotnet --version", StringComparison.OrdinalIgnoreCase) || cmd.Equals("dotnet build", StringComparison.OrdinalIgnoreCase),
@@ -336,23 +347,40 @@ Workspace folder: {projectPath}. Only the attached file content is available; do
             "npm" => cmd.Equals("npm --version", StringComparison.OrdinalIgnoreCase) || cmd.Equals("npm -v", StringComparison.OrdinalIgnoreCase),
             _ => false
         };
-        if (!permitted) { TerminalOutput.Text += "Blocked: only safe version checks, git status, and dotnet build are enabled.
-"; return; }
-        try {
-            var psi = new ProcessStartInfo { FileName = exe is "pwd" or "dir" or "ls" ? "powershell.exe" : exe, WorkingDirectory = projectPath ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
-            if (exe is "pwd" or "dir" or "ls") { psi.ArgumentList.Add("-NoProfile"); psi.ArgumentList.Add("-Command"); psi.ArgumentList.Add(exe == "pwd" ? "Get-Location" : "Get-ChildItem -Name"); }
-            else foreach (var arg in words.Skip(1)) psi.ArgumentList.Add(arg);
-            using var process = Process.Start(psi)!; var stdout = process.StandardOutput.ReadToEndAsync(); var stderr = process.StandardError.ReadToEndAsync();
+        if (!permitted) { TerminalOutput.Text += "Blocked: only safe version checks, git status, and dotnet build are enabled.\n"; return; }
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = exe is "pwd" or "dir" or "ls" ? "powershell.exe" : exe,
+                WorkingDirectory = projectPath ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            if (exe is "pwd" or "dir" or "ls")
+            {
+                psi.ArgumentList.Add("-NoProfile");
+                psi.ArgumentList.Add("-Command");
+                psi.ArgumentList.Add(exe == "pwd" ? "Get-Location" : "Get-ChildItem -Name");
+            }
+            else
+            {
+                foreach (var arg in words.Skip(1)) psi.ArgumentList.Add(arg);
+            }
+
+            using var process = Process.Start(psi)!;
+            var stdout = process.StandardOutput.ReadToEndAsync();
+            var stderr = process.StandardError.ReadToEndAsync();
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             try { await process.WaitForExitAsync(cts.Token); }
             catch (OperationCanceledException) { if (!process.HasExited) process.Kill(entireProcessTree: true); throw; }
-            TerminalOutput.Text += await stdout + await stderr + $"
-[exit code {process.ExitCode}]
-";
-        } catch (OperationCanceledException) { TerminalOutput.Text += "Command timed out after 20 seconds.
-"; }
-          catch (Exception ex) { TerminalOutput.Text += "Error: " + ex.Message + "
-"; }
+            TerminalOutput.Text += await stdout + await stderr + $"\n[exit code {process.ExitCode}]\n";
+        }
+        catch (OperationCanceledException) { TerminalOutput.Text += "Command timed out after 20 seconds.\n"; }
+        catch (Exception ex) { TerminalOutput.Text += "Error: " + ex.Message + "\n"; }
         TerminalScroll.ScrollToEnd();
     }
     private static List<string> SplitArgs(string value)
