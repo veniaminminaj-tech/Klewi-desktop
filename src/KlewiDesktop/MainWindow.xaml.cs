@@ -94,7 +94,7 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("Gemini returned no candidates. Check model access, prompt safety, and API quota.");
             var parts = candidates[0].GetProperty("content").GetProperty("parts");
             var textParts = parts.EnumerateArray().Where(x => x.TryGetProperty("text", out _)).Select(x => x.GetProperty("text").GetString()).Where(x => !string.IsNullOrWhiteSpace(x));
-            return string.Join("\\n", textParts) is { Length: > 0 } answer ? answer : "(Empty response)";
+            return string.Join(Environment.NewLine, textParts) is { Length: > 0 } answer ? answer : "(Empty response)";
         }
 
         var endpoint = provider == "OpenRouter" ? "https://openrouter.ai/api/v1/chat/completions" : "https://api.openai.com/v1/chat/completions";
