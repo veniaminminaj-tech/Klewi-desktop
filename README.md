@@ -7,7 +7,8 @@ Windows desktop prototype built with C# WPF and .NET 10.
 - Real AI chat through Gemini, OpenAI, and OpenRouter-compatible chat APIs
 - OpenRouter public model catalog browser
 - API key protected with Windows DPAPI
-- Project folder picker, file tree, and editable source/text-file editor
+- Project folder picker, file tree, and editable source/text-file editor with extension-based recognition for many common languages
+- Multilingual Code Assistant with auto-detection or explicit language preference across mainstream and specialist languages
 - Create new project files and save edits locally; automatic timestamped backups are stored under the user's LocalAppData folder
 - Ask AI to rewrite the selected file; review the before/after content and explicitly approve before the app writes it
 - Explicitly attach the current editor contents to the next AI chat request (100 KB disk-file limit for normal attachment; common secret filenames are blocked)
@@ -31,3 +32,6 @@ The project editor currently handles one selected text/source file at a time; it
 
 Minecraft Studio can run the Gradle `build` task for a generated project when a Gradle wrapper or system Gradle is available. Gradle build scripts execute code, so the app requires explicit confirmation and users should inspect generated build files first. A successful Gradle exit does not independently prove loader compatibility or guarantee the JAR works in-game. Plugin SDK, GitHub integration, Computer Control, installer, and automated tests are not implemented yet. File context is only sent when the user explicitly selects a supported file and attaches it, or asks AI to edit that selected file. The app blocks common secret filenames, but this is not a complete secret scanner; review file contents before sending them to an external AI provider. OpenAI-compatible providers require a valid API key and model ID. OpenRouter model discovery reads its public catalog; actual inference may incur provider charges. The terminal intentionally permits only a small set of commands.
 \n\n## ISO Tools\nThe ISO workspace can inspect an existing `.iso` file, calculate its SHA-256 checksum, and mount or dismount it as a virtual DVD on Windows 10/11. The Windows version selector is a label for organizing the selected image; it does not identify or validate the actual Windows edition inside the ISO. The app does not modify ISO contents or create/format bootable USB drives.\n
+
+## Multilingual Code Assistant
+Klewi can discuss and generate code across a broad range of languages. The chat language selector can auto-detect or prioritize a chosen language, and the editor identifies common languages from file extensions. Actual quality and framework knowledge depend on the selected AI model/provider; this does not guarantee support for every language, compiler, or runtime. The editor is a text editor, not a full IDE with built-in language servers, syntax highlighting, or every compiler installed.
