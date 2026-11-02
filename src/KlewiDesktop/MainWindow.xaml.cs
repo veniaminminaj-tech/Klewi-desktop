@@ -386,8 +386,8 @@ public partial class MainWindow : Window
         {
             IsoStatusText.Text = "Підключаю ISO як віртуальний DVD…";
             var path = QuotePowerShellLiteral(selectedIsoPath);
-            var script = "$img = Mount-DiskImage -ImagePath " + path + " -PassThru -ErrorAction Stop; " +
-                         "$vol = $img | Get-Volume -ErrorAction SilentlyContinue | Where-Object DriveLetter | Select-Object -First 1; " +
+            var script = "Mount-DiskImage -ImagePath " + path + " -ErrorAction Stop | Out-Null; " +
+                         "$vol = Get-DiskImage -ImagePath " + path + " | Get-Disk | Get-Partition | Get-Volume | Where-Object DriveLetter | Select-Object -First 1; " +
                          "if ($null -eq $vol) { throw 'Образ підключено, але букву диска не знайдено.' }; " +
                          "$vol.DriveLetter";
             var drive = await RunPowerShellAsync(script);
