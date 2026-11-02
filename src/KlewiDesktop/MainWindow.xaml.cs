@@ -549,7 +549,7 @@ public partial class MainWindow : Window
     }
     private string BuildSystemInstruction()
     {
-        const string baseline = "You are Klewi, a helpful coding assistant. Be accurate, practical, and honest. You can only inspect project file contents explicitly attached in chat or opened in the project editor. You may propose complete file edits, but the desktop app writes them only after the user reviews and approves them. Never claim a file was changed or a project was built unless the app confirms that action.";
+        const string baseline = "You are Klewi, a multilingual software engineering assistant. Help with programming languages and ecosystems broadly, including C, C++, C#, F#, Java, Kotlin, Scala, Python, JavaScript, TypeScript, Go, Rust, Swift, Objective-C, PHP, Ruby, Perl, Lua, Dart, R, Julia, MATLAB, SQL, HTML, CSS, XML, YAML, JSON, Bash, PowerShell, Windows batch, assembly (including FASM), Solidity, and domain-specific languages. If a language or framework is unfamiliar, say so and reason carefully rather than inventing APIs. Match project conventions, identify language and runtime versions, provide complete code, explain dependencies and exact build/run commands, and distinguish tested facts from assumptions. Be accurate, practical, and honest. You can only inspect project file contents explicitly attached in chat or opened in the project editor. You may propose complete file edits, but the desktop app writes them only after the user reviews and approves them. Never claim a file was changed or a project was built unless the app confirms that action.";
         return string.IsNullOrWhiteSpace(customInstructions) ? baseline : baseline + Environment.NewLine + Environment.NewLine + "Additional user instructions:" + Environment.NewLine + customInstructions;
     }
 
@@ -639,7 +639,9 @@ public partial class MainWindow : Window
         pendingFileContext = "";
         try
         {
-            var fullPrompt = prompt
+            var language = (ChatLanguageCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Auto-detect";
+            var languageInstruction = language == "Auto-detect" ? "Programming language mode: auto-detect from the request and attached code." : "Programming language mode requested by user: " + language + ". Prioritize it, but use other languages when required.";
+            var fullPrompt = languageInstruction + "\nFor coding tasks, provide complete usable code and appropriate build/run/test commands. Never claim execution or tests unless performed.\n\n" + prompt
                 + (attachedContext.Length == 0 ? "" : "\n\nUser-selected project file:\n" + attachedContext)
                 + (projectPath is null ? "" : $"\nWorkspace folder: {projectPath}. Only the attached file content is available; do not claim to have read other files.");
             pending.Text = await AskProvider(fullPrompt);
@@ -841,7 +843,8 @@ public partial class MainWindow : Window
             busy = true;
             AskAIEditButton.IsEnabled = false;
             FilePreviewStatus.Text = "Klewi is preparing a proposed edit…";
-            var prompt = "Edit the supplied project file according to the request. Return exactly one JSON object with string keys summary and content. content must be the COMPLETE replacement file, not a diff, with no Markdown fences. Do not include unrelated changes. Do not claim you wrote the file.\n\nFILE PATH: "
+            var detectedLanguage = DetectProgrammingLanguage(path);
+            var prompt = "You are editing a " + detectedLanguage + " project file. Respect its syntax, compiler/runtime version, project conventions, and dependencies. Edit the supplied file according to the request. Return exactly one JSON object with string keys summary and content. content must be the COMPLETE replacement file, not a diff, with no Markdown fences. Do not include unrelated changes. Do not claim you wrote the file.\n\nFILE PATH: "
                 + Path.GetRelativePath(projectPath, path) + "\n\nUSER REQUEST:\n" + task + "\n\nCURRENT FILE CONTENT:\n" + before;
             var response = await AskProvider(prompt);
             using var doc = JsonDocument.Parse(ExtractJsonObject(response));
@@ -895,10 +898,39 @@ public partial class MainWindow : Window
 
     private static readonly HashSet<string> PreviewExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".cs", ".xaml", ".json", ".xml", ".md", ".txt", ".py", ".js", ".ts", ".html", ".css",
-        ".cpp", ".c", ".h", ".hpp", ".asm", ".ps1", ".yml", ".yaml", ".toml", ".ini", ".java",
-        ".gradle", ".properties", ".sql", ".sh", ".bat", ".cmd", ".sln", ".csproj", ".props", ".targets"
+        ".cs", ".fs", ".vb", ".xaml", ".json", ".jsonc", ".xml", ".md", ".txt", ".py", ".pyw", ".pyi",
+        ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx", ".html", ".htm", ".css", ".scss", ".sass", ".less",
+        ".cpp", ".c", ".h", ".hpp", ".hh", ".hxx", ".cc", ".cxx", ".asm", ".inc", ".s", ".S",
+        ".ps1", ".psm1", ".psd1", ".yml", ".yaml", ".toml", ".ini", ".java", ".kt", ".kts", ".scala",
+        ".gradle", ".properties", ".sql", ".sh", ".bash", ".zsh", ".fish", ".bat", ".cmd", ".sln",
+        ".csproj", ".fsproj", ".vbproj", ".props", ".targets", ".go", ".rs", ".php", ".rb", ".r",
+        ".jl", ".swift", ".m", ".mm", ".dart", ".lua", ".pl", ".pm", ".ex", ".exs", ".hs", ".lhs",
+        ".clj", ".cljs", ".cljc", ".edn", ".sol", ".move", ".tf", ".hcl", ".mk", ".cmake", ".proto",
+        ".graphql", ".gql", ".vue", ".svelte", ".astro", ".ipynb"
     };
+
+    private static string DetectProgrammingLanguage(string path)
+    {
+        var ext = Path.GetExtension(path).ToLowerInvariant();
+        return ext switch
+        {
+            ".cs" => "C#", ".fs" or ".fsproj" => "F#", ".vb" => "Visual Basic",
+            ".c" or ".h" => "C", ".cpp" or ".cc" or ".cxx" or ".hpp" or ".hh" or ".hxx" => "C++",
+            ".py" or ".pyw" or ".pyi" or ".ipynb" => "Python",
+            ".js" or ".mjs" or ".cjs" or ".jsx" => "JavaScript", ".ts" or ".tsx" => "TypeScript",
+            ".java" => "Java", ".kt" or ".kts" => "Kotlin", ".scala" => "Scala", ".go" => "Go",
+            ".rs" => "Rust", ".swift" => "Swift", ".php" => "PHP", ".rb" => "Ruby", ".pl" or ".pm" => "Perl",
+            ".lua" => "Lua", ".dart" => "Dart", ".r" => "R", ".jl" => "Julia", ".sql" => "SQL",
+            ".html" or ".htm" => "HTML", ".css" or ".scss" or ".sass" or ".less" => "CSS / stylesheet",
+            ".sh" or ".bash" or ".zsh" or ".fish" => "Shell script", ".ps1" or ".psm1" or ".psd1" => "PowerShell",
+            ".bat" or ".cmd" => "Windows batch", ".asm" or ".inc" or ".s" => "Assembly (verify assembler syntax)",
+            ".sol" => "Solidity", ".ex" or ".exs" => "Elixir", ".hs" or ".lhs" => "Haskell",
+            ".clj" or ".cljs" or ".cljc" or ".edn" => "Clojure", ".tf" or ".hcl" => "Terraform / HCL",
+            ".vue" => "Vue component", ".svelte" => "Svelte component", ".astro" => "Astro component",
+            ".xml" or ".xaml" => "XML", ".json" or ".jsonc" => "JSON", ".yml" or ".yaml" => "YAML",
+            ".toml" => "TOML", ".md" => "Markdown", _ => "text/configuration or unrecognized language; infer from contents"
+        };
+    }
 
     private static bool IsSensitiveProjectFile(string path)
     {
