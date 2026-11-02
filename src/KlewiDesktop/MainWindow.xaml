@@ -52,7 +52,7 @@
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
        <Button Content="New file" Click="CreateProjectFile_Click"/>
        <Button Content="Save file" Background="{StaticResource Accent}" Click="SaveSelectedFile_Click"/>
-       <Button Content="AI edit" Click="AskAIEdit_Click"/>
+       <Button x:Name="AskAIEditButton" Content="AI edit" Click="AskAIEdit_Click"/>
        <Button Content="Open folder…" Click="OpenProject_Click"/>
       </StackPanel>
       <TextBlock x:Name="ProjectPathText" Text="No folder selected" Foreground="{StaticResource Muted}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
