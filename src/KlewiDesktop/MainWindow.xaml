@@ -60,9 +60,10 @@
       <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="18" Margin="0,0,0,14">
        <StackPanel><TextBlock Text="AI Provider" FontSize="18" FontWeight="SemiBold"/>
         <TextBlock Text="Gemini is implemented in this prototype. OpenAI and OpenRouter are planned next." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,14"/>
-        <TextBlock Text="Gemini API key" Foreground="{StaticResource Muted}"/><PasswordBox x:Name="ApiKeyBox" Width="420" HorizontalAlignment="Left" Padding="9" Background="#111722" Foreground="White" BorderBrush="#34445B" Margin="0,5,0,12"/>
-        <TextBlock Text="Model" Foreground="{StaticResource Muted}"/><ComboBox x:Name="ModelCombo" Width="260" HorizontalAlignment="Left" SelectedIndex="0" Padding="7"><ComboBoxItem Content="gemini-2.5-flash"/><ComboBoxItem Content="gemini-2.5-pro"/></ComboBox>
-        <StackPanel Orientation="Horizontal" Margin="0,12,0,0"><Button Content="Save securely" Background="{StaticResource Accent}" Click="SaveSettings_Click"/><Button Content="Test connection" Click="TestConnection_Click"/></StackPanel>
+        <TextBlock Text="Provider" Foreground="{StaticResource Muted}"/><ComboBox x:Name="ProviderCombo" Width="260" HorizontalAlignment="Left" SelectedIndex="0" Padding="7" SelectionChanged="ProviderCombo_SelectionChanged"><ComboBoxItem Content="Gemini"/><ComboBoxItem Content="OpenAI"/><ComboBoxItem Content="OpenRouter"/></ComboBox>
+        <TextBlock Text="API key" Foreground="{StaticResource Muted}" Margin="0,12,0,0"/><PasswordBox x:Name="ApiKeyBox" Width="420" HorizontalAlignment="Left" Padding="9" Background="#111722" Foreground="White" BorderBrush="#34445B" Margin="0,5,0,12"/>
+        <TextBlock Text="Model ID" Foreground="{StaticResource Muted}"/><TextBox x:Name="ModelBox" Width="420" HorizontalAlignment="Left" Padding="9" Text="gemini-2.5-flash"/>
+        <StackPanel Orientation="Horizontal" Margin="0,12,0,0"><Button Content="Save securely" Background="{StaticResource Accent}" Click="SaveSettings_Click"/><Button Content="Test connection" Click="TestConnection_Click"/><Button Content="Load OpenRouter models" Click="LoadModels_Click"/></StackPanel>
         <TextBlock x:Name="SettingsStatus" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="4,9,0,0"/>
        </StackPanel>
       </Border>
