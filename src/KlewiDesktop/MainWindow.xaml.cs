@@ -30,6 +30,8 @@ public partial class MainWindow : Window
     private string minecraftDefaultLoader = "Fabric";
     private string minecraftDefaultTask = "Minecraft mod (Java)";
     private string minecraftOutputFolder = "";
+    private string? lastMinecraftProjectDirectory;
+    private string loadedFileContents = "";
     private bool busy;
 
     public MainWindow() { InitializeComponent(); LoadSettings(); UpdateStatus(); }
@@ -126,6 +128,10 @@ public partial class MainWindow : Window
             var outputName = MakeSafeFileName(name);
             var outputDirectory = Path.Combine(basePath, outputName + "-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
             Directory.CreateDirectory(outputDirectory);
+            lastMinecraftProjectDirectory = outputDirectory;
+            MinecraftTexturePreview.Source = null;
+            MinecraftTexturePreview.Visibility = Visibility.Collapsed;
+            MinecraftBuildOutput.Clear();
 
             if (task == "Texture design (pixel art)")
             {
@@ -135,6 +141,14 @@ public partial class MainWindow : Window
                 var texturePath = GetSafeOutputPath(outputDirectory, relativeAssetPath);
                 Directory.CreateDirectory(Path.GetDirectoryName(texturePath)!);
                 WriteTexturePng(root, texturePath);
+                var previewBitmap = new BitmapImage();
+                previewBitmap.BeginInit();
+                previewBitmap.CacheOption = BitmapCacheOption.OnLoad;
+                previewBitmap.UriSource = new Uri(texturePath);
+                previewBitmap.EndInit();
+                previewBitmap.Freeze();
+                MinecraftTexturePreview.Source = previewBitmap;
+                MinecraftTexturePreview.Visibility = Visibility.Visible;
                 File.WriteAllText(Path.Combine(outputDirectory, "README.txt"),
                     "Generated Minecraft texture" + Environment.NewLine +
                     "Asset path: " + relativeAssetPath + Environment.NewLine +
@@ -484,10 +498,236 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFolderDialog { Title = "Choose project folder" };
         if (dialog.ShowDialog() != true) return;
-        projectPath = dialog.FolderName; ProjectPathText.Text = projectPath; ProjectTree.Items.Clear();
-        selectedFilePath = null; FilePreview.Clear(); FilePreviewStatus.Text = "Select a text file to preview it.";
-        var root = new TreeViewItem { Header = Path.GetFileName(projectPath), Tag = projectPath, IsExpanded = true }; ProjectTree.Items.Add(root);
-        try { FillTree(root, projectPath, 0); } catch (Exception ex) { MessageBox.Show(ex.Message, "Klewi"); }
+        projectPath = Path.GetFullPath(dialog.FolderName);
+        ProjectPathText.Text = projectPath;
+        selectedFilePath = null;
+        loadedFileContents = "";
+        FilePreview.Clear();
+        FilePreviewStatus.Text = "Select a text file to preview or edit it.";
+        RefreshProjectTree();
+    }
+
+    private void RefreshProjectTree()
+    {
+        if (string.IsNullOrWhiteSpace(projectPath) || !Directory.Exists(projectPath)) return;
+        ProjectTree.Items.Clear();
+        var root = new TreeViewItem { Header = Path.GetFileName(projectPath), Tag = projectPath, IsExpanded = true };
+        ProjectTree.Items.Add(root);
+        try { FillTree(root, projectPath, 0); }
+        catch (Exception ex) { MessageBox.Show(ex.Message, "Klewi"); }
+    }
+
+    private string EnsureInsideProject(string path)
+    {
+        if (string.IsNullOrWhiteSpace(projectPath)) throw new InvalidOperationException("Open a project folder first.");
+        var root = Path.GetFullPath(projectPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var full = Path.GetFullPath(path);
+        if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Klewi can only edit files inside the selected project folder.");
+        return full;
+    }
+
+    private static string CreateBackup(string filePath, string rootPath)
+    {
+        var backupRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KlewiDesktop", "Backups");
+        Directory.CreateDirectory(backupRoot);
+        var relative = Path.GetRelativePath(rootPath, filePath).Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_');
+        var backup = Path.Combine(backupRoot, DateTime.Now.ToString("yyyyMMdd-HHmmss-fff") + "-" + relative + ".bak");
+        File.Copy(filePath, backup, false);
+        return backup;
+    }
+
+    private void CreateProjectFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(projectPath) || !Directory.Exists(projectPath))
+        {
+            MessageBox.Show("Open a project folder first.", "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var dialog = new SaveFileDialog
+        {
+            Title = "Create a new project file",
+            InitialDirectory = projectPath,
+            Filter = "All files (*.*)|*.*",
+            FileName = "NewFile.txt",
+            OverwritePrompt = false
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var path = EnsureInsideProject(dialog.FileName);
+            if (File.Exists(path))
+            {
+                MessageBox.Show("That file already exists. Choose a new name.", "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, "", new UTF8Encoding(false));
+            RefreshProjectTree();
+            selectedFilePath = path;
+            loadedFileContents = "";
+            FilePreview.Text = "";
+            FilePreviewStatus.Text = "New file created: " + Path.GetRelativePath(projectPath, path) + ". Edit it and press Save file.";
+        }
+        catch (Exception ex) { MessageBox.Show("Could not create file: " + ex.Message, "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private void SaveSelectedFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(selectedFilePath) || !File.Exists(selectedFilePath) || projectPath is null)
+        {
+            MessageBox.Show("Select an existing project text file first. Use New file to create one.", "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        try
+        {
+            var path = EnsureInsideProject(selectedFilePath);
+            if (IsSensitiveProjectFile(path)) throw new InvalidOperationException("Saving files with sensitive names is blocked.");
+            var diskContents = File.ReadAllText(path);
+            if (!string.Equals(diskContents, loadedFileContents, StringComparison.Ordinal))
+            {
+                MessageBox.Show("This file changed outside Klewi after it was opened. Reload it before saving to avoid overwriting newer work.", "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (!string.Equals(FilePreview.Text, diskContents, StringComparison.Ordinal))
+            {
+                var backup = CreateBackup(path, projectPath);
+                File.WriteAllText(path, FilePreview.Text, new UTF8Encoding(false));
+                loadedFileContents = FilePreview.Text;
+                FilePreviewStatus.Text = "Saved • backup: " + backup;
+            }
+            else FilePreviewStatus.Text = "No changes to save.";
+            RefreshProjectTree();
+        }
+        catch (Exception ex) { MessageBox.Show("Save failed: " + ex.Message, "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Error); }
+    }
+
+    private string? PromptForText(string title, string prompt, string initialText = "")
+    {
+        var dialog = new Window
+        {
+            Title = title, Width = 650, Height = 300, Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = (Brush)FindResource("Panel"), Foreground = Brushes.White,
+            ResizeMode = ResizeMode.CanResize
+        };
+        var layout = new Grid { Margin = new Thickness(16) };
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        var label = new TextBlock { Text = prompt, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10) };
+        Grid.SetRow(label, 0); layout.Children.Add(label);
+        var input = new TextBox { Text = initialText, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MinHeight = 100, Background = new SolidColorBrush(Color.FromRgb(11, 16, 24)), Foreground = Brushes.White, Padding = new Thickness(9) };
+        Grid.SetRow(input, 1); layout.Children.Add(input);
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
+        var cancel = new Button { Content = "Cancel", MinWidth = 90, Margin = new Thickness(0, 0, 8, 0) };
+        cancel.Click += (_, _) => dialog.DialogResult = false;
+        var ok = new Button { Content = "Continue", MinWidth = 100, Background = (Brush)FindResource("Accent") };
+        ok.Click += (_, _) => dialog.DialogResult = true;
+        buttons.Children.Add(cancel); buttons.Children.Add(ok);
+        Grid.SetRow(buttons, 2); layout.Children.Add(buttons);
+        dialog.Content = layout;
+        return dialog.ShowDialog() == true ? input.Text.Trim() : null;
+    }
+
+    private bool ShowFileChangePreview(string title, string summary, string before, string after)
+    {
+        var dialog = new Window
+        {
+            Title = title, Width = 1100, Height = 720, Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = (Brush)FindResource("Panel"), Foreground = Brushes.White,
+            ResizeMode = ResizeMode.CanResize
+        };
+        var layout = new Grid { Margin = new Thickness(14) };
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layout.ColumnDefinitions.Add(new ColumnDefinition());
+        layout.ColumnDefinitions.Add(new ColumnDefinition());
+        var description = new TextBlock { Text = summary, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10) };
+        Grid.SetRow(description, 0); Grid.SetColumnSpan(description, 2); layout.Children.Add(description);
+        var oldBox = new TextBox { Text = before, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, FontFamily = new FontFamily("Consolas"), Background = new SolidColorBrush(Color.FromRgb(11, 16, 24)), Foreground = Brushes.LightGray, Margin = new Thickness(0, 0, 6, 0) };
+        var newBox = new TextBox { Text = after, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, FontFamily = new FontFamily("Consolas"), Background = new SolidColorBrush(Color.FromRgb(11, 16, 24)), Foreground = Brushes.White, Margin = new Thickness(6, 0, 0, 0) };
+        Grid.SetRow(oldBox, 1); Grid.SetColumn(oldBox, 0); layout.Children.Add(oldBox);
+        Grid.SetRow(newBox, 1); Grid.SetColumn(newBox, 1); layout.Children.Add(newBox);
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
+        var cancel = new Button { Content = "Discard", MinWidth = 100, Margin = new Thickness(0, 0, 8, 0) };
+        cancel.Click += (_, _) => dialog.DialogResult = false;
+        var apply = new Button { Content = "Apply changes", MinWidth = 120, Background = (Brush)FindResource("Accent") };
+        apply.Click += (_, _) => dialog.DialogResult = true;
+        buttons.Children.Add(cancel); buttons.Children.Add(apply);
+        Grid.SetRow(buttons, 2); Grid.SetColumnSpan(buttons, 2); layout.Children.Add(buttons);
+        dialog.Content = layout;
+        return dialog.ShowDialog() == true;
+    }
+
+    private async void AskAIEdit_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            MessageBox.Show("Configure an AI provider in Settings first.", "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(selectedFilePath) || projectPath is null || !File.Exists(selectedFilePath))
+        {
+            MessageBox.Show("Select a project text file first.", "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (busy) return;
+        try
+        {
+            var path = EnsureInsideProject(selectedFilePath);
+            if (IsSensitiveProjectFile(path)) throw new InvalidOperationException("AI access to files with sensitive names is blocked.");
+            var before = FilePreview.Text;
+            var diskBefore = File.ReadAllText(path);
+            if (Encoding.UTF8.GetByteCount(before) > 500 * 1024) throw new InvalidOperationException("AI editing is limited to files up to 500 KB.");
+            var task = PromptForText("Ask Klewi to edit this file", "Describe the exact changes you want. Klewi will show a before/after preview and will not write until you apply it.");
+            if (string.IsNullOrWhiteSpace(task)) return;
+            busy = true;
+            AskAIEditButtonBusyState(true);
+            FilePreviewStatus.Text = "Klewi is preparing a proposed edit…";
+            var prompt = "Edit the supplied project file according to the request. Return exactly one JSON object with string keys summary and content. content must be the COMPLETE replacement file, not a diff, with no Markdown fences. Do not include unrelated changes. Do not claim you wrote the file.\n\nFILE PATH: "
+                + Path.GetRelativePath(projectPath, path) + "\n\nUSER REQUEST:\n" + task + "\n\nCURRENT FILE CONTENT:\n" + before;
+            var response = await AskProvider(prompt);
+            using var doc = JsonDocument.Parse(ExtractJsonObject(response));
+            var summary = doc.RootElement.GetProperty("summary").GetString() ?? "AI proposed file changes.";
+            var after = doc.RootElement.GetProperty("content").GetString() ?? throw new InvalidDataException("AI did not return file content.");
+            if (Encoding.UTF8.GetByteCount(after) > 1024 * 1024) throw new InvalidDataException("AI edit exceeds the 1 MB file limit.");
+            if (string.Equals(before, after, StringComparison.Ordinal))
+            {
+                FilePreviewStatus.Text = "AI did not propose any changes.";
+                return;
+            }
+            if (!ShowFileChangePreview("Review AI file changes", summary, before, after))
+            {
+                FilePreviewStatus.Text = "AI changes discarded. Your file was not modified.";
+                return;
+            }
+            var diskNow = File.ReadAllText(path);
+            if (!string.Equals(diskNow, diskBefore, StringComparison.Ordinal))
+                throw new IOException("The file changed on disk while Klewi was preparing the edit. Nothing was applied; reload the file and try again.");
+            var backup = CreateBackup(path, projectPath);
+            File.WriteAllText(path, after, new UTF8Encoding(false));
+            FilePreview.Text = after;
+            loadedFileContents = after;
+            FilePreviewStatus.Text = "AI changes applied • backup: " + backup;
+            RefreshProjectTree();
+        }
+        catch (Exception ex)
+        {
+            FilePreviewStatus.Text = "AI edit failed: " + ex.Message;
+            MessageBox.Show("Klewi could not apply the edit:\n\n" + ex.Message, "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally { busy = false; AskAIEditButtonBusyState(false); }
+    }
+
+    private void AskAIEditButtonBusyState(bool isBusy)
+    {
+        foreach (var child in ((DockPanel)ProjectPage.Children[0]).Children)
+            if (child is StackPanel panel)
+                foreach (var item in panel.Children)
+                    if (item is Button button && button.Content?.ToString() == "AI edit") button.IsEnabled = !isBusy;
     }
     private static void FillTree(TreeViewItem node, string path, int depth)
     {
@@ -548,7 +788,8 @@ public partial class MainWindow : Window
                 return;
             }
             FilePreview.Text = File.ReadAllText(path);
-            FilePreviewStatus.Text = $"{Path.GetFileName(path)} • {info.Length:N0} bytes";
+            loadedFileContents = FilePreview.Text;
+            FilePreviewStatus.Text = $"{Path.GetFileName(path)} • {info.Length:N0} bytes • editable";
         }
         catch (Exception ex)
         {
@@ -578,7 +819,7 @@ public partial class MainWindow : Window
                 return;
             }
             var relative = Path.GetRelativePath(projectPath, selectedFilePath);
-            var contents = File.ReadAllText(selectedFilePath);
+            var contents = FilePreview.Text;
             pendingFileContext = $"File: {relative}{Environment.NewLine}{contents}";
             Navigate("chat", "AI Chat", "Ask Klewi about the selected project file.");
             AddMessage("Klewi", $"Attached {relative} as context for your next message. It will be sent to your selected AI provider.");
@@ -588,6 +829,88 @@ public partial class MainWindow : Window
         {
             MessageBox.Show("Could not attach file: " + ex.Message, "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private async void BuildMinecraftJar_Click(object sender, RoutedEventArgs e)
+    {
+        var buildDirectory = lastMinecraftProjectDirectory;
+        if (string.IsNullOrWhiteSpace(buildDirectory) || !Directory.Exists(buildDirectory))
+        {
+            var picker = new OpenFolderDialog { Title = "Choose the generated Minecraft mod project folder" };
+            if (picker.ShowDialog(this) != true) return;
+            buildDirectory = picker.FolderName;
+        }
+
+        var hasBuildFile = File.Exists(Path.Combine(buildDirectory, "build.gradle")) ||
+                           File.Exists(Path.Combine(buildDirectory, "build.gradle.kts"));
+        if (!hasBuildFile)
+        {
+            MinecraftStatusText.Text = "This folder has no Gradle build.gradle or build.gradle.kts file.";
+            return;
+        }
+        var wrapper = Path.Combine(buildDirectory, "gradlew.bat");
+        var useWrapper = File.Exists(wrapper);
+        var confirmation = MessageBox.Show(
+            "Klewi is about to run the Gradle 'build' task in:\n" + buildDirectory +
+            "\n\nGradle build scripts can execute code on your computer. Review build.gradle, settings.gradle and wrapper files first. Continue?",
+            "Confirm Minecraft mod build", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (confirmation != MessageBoxResult.Yes) return;
+        if (busy) return;
+
+        busy = true;
+        BuildMinecraftButton.IsEnabled = false;
+        MinecraftBuildOutput.Text = "Starting Gradle build…";
+        MinecraftStatusText.Text = "Building mod. This can take several minutes and may download dependencies.";
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                WorkingDirectory = buildDirectory,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            psi.ArgumentList.Add("/d");
+            psi.ArgumentList.Add("/c");
+            psi.ArgumentList.Add(useWrapper ? "\"" + wrapper + "\" build" : "gradle build");
+            using var process = Process.Start(psi) ?? throw new InvalidOperationException("Could not start the Gradle process.");
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+            try { await process.WaitForExitAsync(timeout.Token); }
+            catch (OperationCanceledException)
+            {
+                if (!process.HasExited) process.Kill(entireProcessTree: true);
+                throw new TimeoutException("Gradle build exceeded the 5-minute limit.");
+            }
+            var output = await stdoutTask;
+            var errors = await stderrTask;
+            var combined = (output + Environment.NewLine + errors).Trim();
+            MinecraftBuildOutput.Text = combined.Length > 24000 ? combined[^24000..] : combined;
+            if (process.ExitCode != 0)
+            {
+                MinecraftStatusText.Text = "Build failed (exit code " + process.ExitCode + "). Read the build output below.";
+                return;
+            }
+            var libs = Path.Combine(buildDirectory, "build", "libs");
+            var jars = Directory.Exists(libs)
+                ? Directory.EnumerateFiles(libs, "*.jar").Where(p =>
+                    !Path.GetFileName(p).Contains("sources", StringComparison.OrdinalIgnoreCase) &&
+                    !Path.GetFileName(p).Contains("javadoc", StringComparison.OrdinalIgnoreCase) &&
+                    !Path.GetFileName(p).Contains("dev", StringComparison.OrdinalIgnoreCase)).ToList()
+                : new List<string>();
+            MinecraftStatusText.Text = jars.Count == 0
+                ? "Gradle build succeeded, but no distributable .jar was found in build/libs."
+                : "Build succeeded! .jar file(s):\n" + string.Join("\n", jars);
+        }
+        catch (Exception ex)
+        {
+            MinecraftStatusText.Text = "Build error: " + ex.Message;
+            MinecraftBuildOutput.Text += Environment.NewLine + ex;
+        }
+        finally { busy = false; BuildMinecraftButton.IsEnabled = true; }
     }
 
     private async void RunTerminal_Click(object s, RoutedEventArgs e) => await RunCommand();
