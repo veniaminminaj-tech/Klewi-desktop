@@ -31,6 +31,9 @@ public partial class MainWindow : Window
     private string minecraftDefaultTask = "Minecraft mod (Java)";
     private string minecraftOutputFolder = "";
     private string? lastMinecraftProjectDirectory;
+    private string? selectedIsoPath;
+    private string? mountedIsoPath;
+    private string? mountedIsoDrive;
     private string loadedFileContents = "";
     private bool busy;
 
@@ -41,6 +44,7 @@ public partial class MainWindow : Window
         ChatPage.Visibility = page == "chat" ? Visibility.Visible : Visibility.Collapsed;
         ProjectPage.Visibility = page == "project" ? Visibility.Visible : Visibility.Collapsed;
         MinecraftPage.Visibility = page == "minecraft" ? Visibility.Visible : Visibility.Collapsed;
+        IsoPage.Visibility = page == "iso" ? Visibility.Visible : Visibility.Collapsed;
         TerminalPage.Visibility = page == "terminal" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPage.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
         PageTitle.Text = title; PageSubtitle.Text = subtitle;
@@ -49,6 +53,7 @@ public partial class MainWindow : Window
     private void ProjectNav_Click(object s, RoutedEventArgs e) => Navigate("project", "Project", "Browse files in your workspace.");
     private void TerminalNav_Click(object s, RoutedEventArgs e) => Navigate("terminal", "Terminal", "Run a limited set of developer commands.");
     private void MinecraftNav_Click(object s, RoutedEventArgs e) => Navigate("minecraft", "Minecraft Studio", "Create mod and resource-pack plans with AI.");
+    private void IsoNav_Click(object s, RoutedEventArgs e) => Navigate("iso", "ISO Tools", "Inspect and mount Windows installation images.");
 
     private void ChooseMinecraftOutput_Click(object sender, RoutedEventArgs e)
     {
@@ -286,6 +291,155 @@ public partial class MainWindow : Window
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(outputPath);
         encoder.Save(stream);
+    }
+
+    private void ChooseIso_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Choose a Windows ISO image",
+            Filter = "ISO images (*.iso)|*.iso|All files (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        selectedIsoPath = Path.GetFullPath(dialog.FileName);
+        IsoPathBox.Text = selectedIsoPath;
+        IsoStatusText.Text = "ISO selected. Choose Information + SHA-256 to inspect it, or Mount ISO to browse its files.";
+    }
+
+    private async void InspectIso_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(selectedIsoPath) || !File.Exists(selectedIsoPath))
+        {
+            IsoStatusText.Text = "Спочатку вибери наявний .iso файл.";
+            return;
+        }
+        try
+        {
+            var info = new FileInfo(selectedIsoPath);
+            IsoStatusText.Text = "Обчислюю SHA-256…";
+            string hash;
+            await using (var stream = new FileStream(selectedIsoPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+            {
+                var bytes = await sha.ComputeHashAsync(stream);
+                hash = Convert.ToHexString(bytes);
+            }
+            var version = (IsoWindowsVersionCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Windows (not specified)";
+            IsoStatusText.Text = $"Target label: {version}\nFile: {info.Name}\nSize: {info.Length:N0} bytes ({info.Length / 1024d / 1024d:N2} MB)\nModified: {info.LastWriteTime}\nSHA-256: {hash}";
+        }
+        catch (Exception ex)
+        {
+            IsoStatusText.Text = "Не вдалося перевірити ISO: " + ex.Message;
+        }
+    }
+
+    private static string QuotePowerShellLiteral(string value) => "'" + value.Replace("'", "''") + "'";
+
+    private static async Task<string> RunPowerShellAsync(string script)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        psi.ArgumentList.Add("-NoProfile");
+        psi.ArgumentList.Add("-NonInteractive");
+        psi.ArgumentList.Add("-ExecutionPolicy");
+        psi.ArgumentList.Add("RemoteSigned");
+        psi.ArgumentList.Add("-Command");
+        psi.ArgumentList.Add(script);
+        using var process = Process.Start(psi) ?? throw new InvalidOperationException("Не вдалося запустити PowerShell.");
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        try { await process.WaitForExitAsync(timeout.Token); }
+        catch (OperationCanceledException)
+        {
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+            throw new TimeoutException("Операція з ISO перевищила 45 секунд.");
+        }
+        var stdout = await stdoutTask;
+        var stderr = await stderrTask;
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(stderr) ? stdout.Trim() : stderr.Trim());
+        return stdout.Trim();
+    }
+
+    private async void MountIso_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(selectedIsoPath) || !File.Exists(selectedIsoPath))
+        {
+            IsoStatusText.Text = "Спочатку вибери наявний .iso файл.";
+            return;
+        }
+        if (mountedIsoPath is not null)
+        {
+            IsoStatusText.Text = "Спочатку відключи вже підключений образ.";
+            return;
+        }
+        try
+        {
+            IsoStatusText.Text = "Підключаю ISO як віртуальний DVD…";
+            var path = QuotePowerShellLiteral(selectedIsoPath);
+            var script = "$img = Mount-DiskImage -ImagePath " + path + " -PassThru -ErrorAction Stop; " +
+                         "$vol = $img | Get-Volume -ErrorAction SilentlyContinue | Where-Object DriveLetter | Select-Object -First 1; " +
+                         "if ($null -eq $vol) { throw 'Образ підключено, але букву диска не знайдено.' }; " +
+                         "$vol.DriveLetter";
+            var drive = await RunPowerShellAsync(script);
+            drive = drive.Trim().TrimEnd(':');
+            if (drive.Length != 1 || !char.IsLetter(drive[0]))
+                throw new InvalidOperationException("Windows не повернула коректну букву диска: " + drive);
+            mountedIsoPath = selectedIsoPath;
+            mountedIsoDrive = drive.ToUpperInvariant() + ":";
+            IsoStatusText.Text = "ISO підключено. Віртуальний диск: " + mountedIsoDrive + "\\";
+        }
+        catch (Exception ex)
+        {
+            IsoStatusText.Text = "Не вдалося підключити ISO: " + ex.Message +
+                "\nПереконайся, що працюєш у Windows 10/11 і файл не пошкоджений.";
+        }
+    }
+
+    private void OpenMountedIso_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(mountedIsoDrive) || !Directory.Exists(mountedIsoDrive + "\\"))
+        {
+            IsoStatusText.Text = "Спочатку підключи ISO.";
+            return;
+        }
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = mountedIsoDrive + "\\",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex) { IsoStatusText.Text = "Не вдалося відкрити Провідник: " + ex.Message; }
+    }
+
+    private async void UnmountIso_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(mountedIsoPath))
+        {
+            IsoStatusText.Text = "Немає підключеного Klewi ISO.";
+            return;
+        }
+        try
+        {
+            IsoStatusText.Text = "Відключаю віртуальний диск…";
+            await RunPowerShellAsync("Dismount-DiskImage -ImagePath " + QuotePowerShellLiteral(mountedIsoPath) + " -ErrorAction Stop | Out-Null");
+            mountedIsoPath = null;
+            mountedIsoDrive = null;
+            IsoStatusText.Text = "ISO безпечно відключено.";
+        }
+        catch (Exception ex) { IsoStatusText.Text = "Не вдалося відключити ISO: " + ex.Message; }
     }
 
     private void SettingsNav_Click(object s, RoutedEventArgs e)
