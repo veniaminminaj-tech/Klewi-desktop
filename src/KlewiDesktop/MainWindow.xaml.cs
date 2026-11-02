@@ -53,9 +53,21 @@ public partial class MainWindow : Window
         }
         var prompt = task switch
         {
-            "Minecraft mod (Java)" => $@"Act as an experienced Minecraft Java mod developer. Prepare a complete, version-correct starter project specification for: {name}.\nMinecraft version: {version}.\nLoader: {loader}.\nIdea: {idea}\n\nReturn: 1) compatibility assumptions and required Java version; 2) exact project folder tree; 3) every required file with its relative path and complete contents in a separate fenced code block; 4) build and test commands; 5) installation instructions. Use official loader conventions for this exact version. Do not invent APIs. If version compatibility is uncertain, say so and ask for verification. Keep code consistent across files.",
-            "Resource pack" => $@"Act as an expert Minecraft resource-pack developer. Design a complete resource pack named {name}.\nMinecraft version: {version}.\nIdea: {idea}\n\nReturn the exact folder tree, pack.mcmeta with a correct pack_format only if verified (otherwise clearly mark it for verification), every required model/override JSON and asset path, and complete file contents in separate fenced code blocks. Explain how to install and test it.",
-            _ => $@"Design a Minecraft pixel-art texture named {name}. Target Minecraft version: {version}.\nDescription: {idea}\n\nReturn a strict JSON object only, with width 16 or 32, height 16 or 32, a palette array of hex colors, and a pixels array of exactly height rows, each exactly width palette indices. Use transparent pixels only if appropriate. Then explain the intended asset path and whether this texture needs an item, block, entity, or armor model. No markdown fences around the JSON."
+            "Minecraft mod (Java)" => $@"Act as an experienced Minecraft Java mod developer. Prepare a complete, version-correct starter project specification for: {name}.
+Minecraft version: {version}.
+Loader: {loader}.
+Idea: {idea}
+
+Return: 1) compatibility assumptions and required Java version; 2) exact project folder tree; 3) every required file with its relative path and complete contents in a separate fenced code block; 4) build and test commands; 5) installation instructions. Use official loader conventions for this exact version. Do not invent APIs. If version compatibility is uncertain, say so and ask for verification. Keep code consistent across files.",
+            "Resource pack" => $@"Act as an expert Minecraft resource-pack developer. Design a complete resource pack named {name}.
+Minecraft version: {version}.
+Idea: {idea}
+
+Return the exact folder tree, pack.mcmeta with a correct pack_format only if verified (otherwise clearly mark it for verification), every required model/override JSON and asset path, and complete file contents in separate fenced code blocks. Explain how to install and test it.",
+            _ => $@"Design a Minecraft pixel-art texture named {name}. Target Minecraft version: {version}.
+Description: {idea}
+
+Return a strict JSON object only, with width 16 or 32, height 16 or 32, a palette array of hex colors, and a pixels array of exactly height rows, each exactly width palette indices. Use transparent pixels only if appropriate. Then explain the intended asset path and whether this texture needs an item, block, entity, or armor model. No markdown fences around the JSON."
         };
         Navigate("chat", "AI Chat", "Minecraft Studio request • " + task);
         ChatInput.Text = prompt;
@@ -186,7 +198,11 @@ public partial class MainWindow : Window
         ChatInput.Clear(); AddMessage("You", prompt); var pending = AddMessage("Klewi", "Thinking…"); busy = true;
         var attachedContext = pendingFileContext;
         pendingFileContext = "";
-        try { pending.Text = await AskProvider(prompt + (attachedContext.Length == 0 ? "" : "\n\nUser-selected project file:\n" + attachedContext) + (projectPath is null ? "" : $"\nWorkspace folder: {projectPath}. Only the attached file content is available; do not claim to have read other files.")); }
+        try { pending.Text = await AskProvider(prompt + (attachedContext.Length == 0 ? "" : "
+
+User-selected project file:
+" + attachedContext) + (projectPath is null ? "" : $"
+Workspace folder: {projectPath}. Only the attached file content is available; do not claim to have read other files.")); }
         catch (Exception ex) { pending.Text = "Request failed: " + ex.Message; }
         finally { busy = false; ChatScroll.ScrollToEnd(); }
     }
@@ -305,10 +321,13 @@ public partial class MainWindow : Window
     private async void TerminalInput_KeyDown(object s, KeyEventArgs e) { if (e.Key == Key.Enter) { e.Handled = true; await RunCommand(); } }
     private async Task RunCommand()
     {
-        var cmd = TerminalInput.Text.Trim(); if (cmd.Length == 0) return; TerminalInput.Clear(); TerminalOutput.Text += $"\n> {cmd}\n";
+        var cmd = TerminalInput.Text.Trim(); if (cmd.Length == 0) return; TerminalInput.Clear(); TerminalOutput.Text += $"
+> {cmd}
+";
         var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "pwd", "dir", "ls", "dotnet", "python", "python3", "node", "npm", "git" };
         var words = SplitArgs(cmd); var exe = words[0].ToLowerInvariant();
-        if (!allowed.Contains(exe)) { TerminalOutput.Text += "Blocked: command is not on the allowlist.\n"; return; }
+        if (!allowed.Contains(exe)) { TerminalOutput.Text += "Blocked: command is not on the allowlist.
+"; return; }
         bool permitted = exe switch {
             "pwd" or "dir" or "ls" => words.Count == 1,
             "git" => cmd.Equals("git status", StringComparison.OrdinalIgnoreCase),
@@ -317,7 +336,8 @@ public partial class MainWindow : Window
             "npm" => cmd.Equals("npm --version", StringComparison.OrdinalIgnoreCase) || cmd.Equals("npm -v", StringComparison.OrdinalIgnoreCase),
             _ => false
         };
-        if (!permitted) { TerminalOutput.Text += "Blocked: only safe version checks, git status, and dotnet build are enabled.\n"; return; }
+        if (!permitted) { TerminalOutput.Text += "Blocked: only safe version checks, git status, and dotnet build are enabled.
+"; return; }
         try {
             var psi = new ProcessStartInfo { FileName = exe is "pwd" or "dir" or "ls" ? "powershell.exe" : exe, WorkingDirectory = projectPath ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
             if (exe is "pwd" or "dir" or "ls") { psi.ArgumentList.Add("-NoProfile"); psi.ArgumentList.Add("-Command"); psi.ArgumentList.Add(exe == "pwd" ? "Get-Location" : "Get-ChildItem -Name"); }
@@ -326,9 +346,13 @@ public partial class MainWindow : Window
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             try { await process.WaitForExitAsync(cts.Token); }
             catch (OperationCanceledException) { if (!process.HasExited) process.Kill(entireProcessTree: true); throw; }
-            TerminalOutput.Text += await stdout + await stderr + $"\n[exit code {process.ExitCode}]\n";
-        } catch (OperationCanceledException) { TerminalOutput.Text += "Command timed out after 20 seconds.\n"; }
-          catch (Exception ex) { TerminalOutput.Text += "Error: " + ex.Message + "\n"; }
+            TerminalOutput.Text += await stdout + await stderr + $"
+[exit code {process.ExitCode}]
+";
+        } catch (OperationCanceledException) { TerminalOutput.Text += "Command timed out after 20 seconds.
+"; }
+          catch (Exception ex) { TerminalOutput.Text += "Error: " + ex.Message + "
+"; }
         TerminalScroll.ScrollToEnd();
     }
     private static List<string> SplitArgs(string value)
