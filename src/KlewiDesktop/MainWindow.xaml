@@ -90,19 +90,66 @@
      <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="TerminalInput" Height="42" KeyDown="TerminalInput_KeyDown"/><Button Grid.Column="1" Content="Run" Background="{StaticResource Accent}" Click="RunTerminal_Click"/></Grid>
     </Grid>
     <Grid x:Name="SettingsPage" Visibility="Collapsed">
-     <ScrollViewer><StackPanel>
-      <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="18" Margin="0,0,0,14">
-       <StackPanel><TextBlock Text="AI Provider" FontSize="18" FontWeight="SemiBold"/>
-        <TextBlock Text="Choose Gemini, OpenAI, or OpenRouter. Enter the matching API key and model ID." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,14"/>
-        <TextBlock Text="Provider" Foreground="{StaticResource Muted}"/><ComboBox x:Name="ProviderCombo" Width="260" HorizontalAlignment="Left" SelectedIndex="0" Padding="7" SelectionChanged="ProviderCombo_SelectionChanged"><ComboBoxItem Content="Gemini"/><ComboBoxItem Content="OpenAI"/><ComboBoxItem Content="OpenRouter"/></ComboBox>
-        <TextBlock Text="API key" Foreground="{StaticResource Muted}" Margin="0,12,0,0"/><PasswordBox x:Name="ApiKeyBox" Width="420" HorizontalAlignment="Left" Padding="9" Background="#111722" Foreground="White" BorderBrush="#34445B" Margin="0,5,0,12"/>
-        <TextBlock Text="Model ID" Foreground="{StaticResource Muted}"/><TextBox x:Name="ModelBox" Width="420" HorizontalAlignment="Left" Padding="9" Text="gemini-2.5-flash"/>
-        <StackPanel Orientation="Horizontal" Margin="0,12,0,0"><Button Content="Save securely" Background="{StaticResource Accent}" Click="SaveSettings_Click"/><Button Content="Test connection" Click="TestConnection_Click"/><Button Content="Load OpenRouter models" Click="LoadModels_Click"/></StackPanel>
+     <TabControl Background="{StaticResource Panel}" BorderBrush="#34445B" Padding="8">
+      <TabItem Header="Instructions">
+       <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16">
+        <TextBlock Text="AI instructions" FontSize="20" FontWeight="SemiBold"/>
+        <TextBlock Text="Choose a starting profile, then customize the instructions Klewi follows." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,14"/>
+        <TextBlock Text="Instruction profile" Foreground="{StaticResource Muted}"/>
+        <ComboBox x:Name="InstructionPresetCombo" Width="300" HorizontalAlignment="Left" SelectedIndex="0" Padding="7" Margin="0,5,0,12" SelectionChanged="InstructionPresetCombo_SelectionChanged">
+         <ComboBoxItem Content="Coding assistant"/><ComboBoxItem Content="Explain step by step"/><ComboBoxItem Content="Short answers"/><ComboBoxItem Content="Minecraft mod developer"/><ComboBoxItem Content="Custom instructions"/>
+        </ComboBox>
+        <TextBlock Text="Your custom instructions" Foreground="{StaticResource Muted}"/>
+        <TextBox x:Name="SettingsInstructionsBox" MinHeight="180" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Padding="10"/>
+        <TextBlock Text="These instructions are sent to the selected AI provider with each request." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+       </StackPanel></ScrollViewer>
+      </TabItem>
+      <TabItem Header="API keys">
+       <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16">
+        <TextBlock Text="AI provider and API keys" FontSize="20" FontWeight="SemiBold"/>
+        <TextBlock Text="Select a provider and enter its API key and model ID." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,14"/>
+        <TextBlock Text="Provider" Foreground="{StaticResource Muted}"/>
+        <ComboBox x:Name="ProviderCombo" Width="300" HorizontalAlignment="Left" SelectedIndex="0" Padding="7" SelectionChanged="ProviderCombo_SelectionChanged"><ComboBoxItem Content="Gemini"/><ComboBoxItem Content="OpenAI"/><ComboBoxItem Content="OpenRouter"/></ComboBox>
+        <TextBlock Text="API key" Foreground="{StaticResource Muted}" Margin="0,12,0,0"/>
+        <PasswordBox x:Name="ApiKeyBox" Width="460" HorizontalAlignment="Left" Padding="9" Background="#111722" Foreground="White" BorderBrush="#34445B" Margin="0,5,0,12"/>
+        <TextBlock Text="Model ID" Foreground="{StaticResource Muted}"/>
+        <TextBox x:Name="ModelBox" Width="460" HorizontalAlignment="Left" Padding="9" Text="gemini-2.5-flash"/>
+        <StackPanel Orientation="Horizontal" Margin="0,12,0,0"><Button Content="Save settings" Background="{StaticResource Accent}" Click="SaveSettings_Click"/><Button Content="Test connection" Click="TestConnection_Click"/><Button Content="Browse OpenRouter models" Click="LoadModels_Click"/></StackPanel>
         <TextBlock x:Name="SettingsStatus" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="4,9,0,0"/>
-       </StackPanel>
-      </Border>
-      <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="18"><StackPanel><TextBlock Text="Safety" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="The API key is encrypted with Windows DPAPI. Terminal commands are restricted. This prototype does not remotely control your computer." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/></StackPanel></Border>
-     </StackPanel></ScrollViewer>
+        <TextBlock Text="API keys are encrypted with Windows DPAPI for the current Windows account." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+       </StackPanel></ScrollViewer>
+      </TabItem>
+      <TabItem Header="Minecraft">
+       <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16">
+        <TextBlock Text="Minecraft Studio defaults" FontSize="20" FontWeight="SemiBold"/>
+        <TextBlock Text="Set the defaults used when you open Minecraft Studio." Foreground="{StaticResource Muted}" Margin="0,6,0,14"/>
+        <TextBlock Text="Default Minecraft version" Foreground="{StaticResource Muted}"/>
+        <TextBox x:Name="SettingsMinecraftVersionBox" Width="300" HorizontalAlignment="Left" Padding="8" Text="1.21.1" Margin="0,5,0,12"/>
+        <TextBlock Text="Default mod loader" Foreground="{StaticResource Muted}"/>
+        <ComboBox x:Name="SettingsMinecraftLoaderCombo" Width="300" HorizontalAlignment="Left" SelectedIndex="0" Padding="7" Margin="0,5,0,12">
+         <ComboBoxItem Content="Fabric"/><ComboBoxItem Content="Forge"/><ComboBoxItem Content="NeoForge"/><ComboBoxItem Content="Not applicable (resource pack)"/>
+        </ComboBox>
+        <TextBlock Text="Default generation type" Foreground="{StaticResource Muted}"/>
+        <ComboBox x:Name="SettingsMinecraftTaskCombo" Width="300" HorizontalAlignment="Left" SelectedIndex="0" Padding="7" Margin="0,5,0,12">
+         <ComboBoxItem Content="Minecraft mod (Java)"/><ComboBoxItem Content="Resource pack"/><ComboBoxItem Content="Texture design (pixel art)"/>
+        </ComboBox>
+        <TextBlock Text="Default output folder" Foreground="{StaticResource Muted}"/>
+        <TextBox x:Name="SettingsMinecraftOutputBox" Width="460" HorizontalAlignment="Left" Padding="8" Margin="0,5,0,12"/>
+        <TextBlock Text="These are defaults only. Generated source files are not automatically executed or compiled." Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+       </StackPanel></ScrollViewer>
+      </TabItem>
+      <TabItem Header="Chat">
+       <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16">
+        <TextBlock Text="Chat behavior" FontSize="20" FontWeight="SemiBold"/>
+        <TextBlock Text="Adjust response creativity and maximum response size." Foreground="{StaticResource Muted}" Margin="0,6,0,14"/>
+        <TextBlock Text="Creativity" Foreground="{StaticResource Muted}"/>
+        <Slider x:Name="SettingsTemperatureSlider" Minimum="0" Maximum="1" Value="0.3" TickFrequency="0.1" IsSnapToTickEnabled="False" Width="360" HorizontalAlignment="Left" Margin="0,8"/>
+        <TextBlock Text="0 = more precise; 1 = more creative." Foreground="{StaticResource Muted}" Margin="0,0,0,14"/>
+        <TextBlock Text="Maximum response tokens" Foreground="{StaticResource Muted}"/>
+        <TextBox x:Name="SettingsMaxTokensBox" Width="160" HorizontalAlignment="Left" Padding="8" Text="4096" Margin="0,5,0,12"/>
+       </StackPanel></ScrollViewer>
+      </TabItem>
+     </TabControl>
     </Grid>
    </Grid>
   </Grid>
