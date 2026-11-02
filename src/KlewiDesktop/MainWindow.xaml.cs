@@ -1,6 +1,7 @@
 using Microsoft.Win32;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
@@ -9,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace KlewiDesktop;
 
@@ -39,6 +41,14 @@ public partial class MainWindow : Window
     private void TerminalNav_Click(object s, RoutedEventArgs e) => Navigate("terminal", "Terminal", "Run a limited set of developer commands.");
     private void MinecraftNav_Click(object s, RoutedEventArgs e) => Navigate("minecraft", "Minecraft Studio", "Create mod and resource-pack plans with AI.");
 
+    private void ChooseMinecraftOutput_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog { Title = "Choose where Minecraft projects will be saved" };
+        var current = MinecraftOutputPathBox.Text.Trim();
+        if (Directory.Exists(current)) dialog.InitialDirectory = current;
+        if (dialog.ShowDialog() == true) MinecraftOutputPathBox.Text = dialog.FolderName;
+    }
+
     private async void GenerateMinecraft_Click(object sender, RoutedEventArgs e)
     {
         var task = (MinecraftTaskCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Minecraft mod (Java)";
@@ -46,33 +56,217 @@ public partial class MainWindow : Window
         var version = MinecraftVersionBox.Text.Trim();
         var name = MinecraftNameBox.Text.Trim();
         var idea = MinecraftIdeaBox.Text.Trim();
-        if (version.Length == 0 || name.Length == 0 || idea.Length == 0)
+
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
-            MessageBox.Show("Fill in the Minecraft version, project name, and idea first.", "Minecraft Studio", MessageBoxButton.OK, MessageBoxImage.Information);
+            MinecraftStatusText.Text = "Configure an AI provider in Settings first.";
             return;
         }
-        var prompt = task switch
+        if (version.Length == 0 || name.Length == 0 || idea.Length == 0)
         {
-            "Minecraft mod (Java)" => $@"Act as an experienced Minecraft Java mod developer. Prepare a complete, version-correct starter project specification for: {name}.
-Minecraft version: {version}.
-Loader: {loader}.
-Idea: {idea}
+            MinecraftStatusText.Text = "Fill in the Minecraft version, project name, and idea.";
+            return;
+        }
+        if (busy) return;
 
-Return: 1) compatibility assumptions and required Java version; 2) exact project folder tree; 3) every required file with its relative path and complete contents in a separate fenced code block; 4) build and test commands; 5) installation instructions. Use official loader conventions for this exact version. Do not invent APIs. If version compatibility is uncertain, say so and ask for verification. Keep code consistent across files.",
-            "Resource pack" => $@"Act as an expert Minecraft resource-pack developer. Design a complete resource pack named {name}.
-Minecraft version: {version}.
-Idea: {idea}
+        var basePrompt = string.Join(Environment.NewLine, new[]
+        {
+            "You are an expert Minecraft Java developer and resource-pack creator.",
+            "Return exactly one valid JSON object. Do not use Markdown fences and do not add prose before or after the JSON.",
+            "All file contents must be complete, consistent, and ready to save. Do not use placeholders such as TODO or 'rest of code here'.",
+            "Use only APIs compatible with the exact Minecraft version and selected loader. Never invent APIs. If uncertain, state that in the summary and avoid fabricating compatibility.",
+            $"Project name: {name}",
+            $"Minecraft version: {version}",
+            $"Loader: {loader}",
+            $"Requested output type: {task}",
+            $"User idea: {idea}"
+        });
 
-Return the exact folder tree, pack.mcmeta with a correct pack_format only if verified (otherwise clearly mark it for verification), every required model/override JSON and asset path, and complete file contents in separate fenced code blocks. Explain how to install and test it.",
-            _ => $@"Design a Minecraft pixel-art texture named {name}. Target Minecraft version: {version}.
-Description: {idea}
+        string prompt;
+        if (task == "Texture design (pixel art)")
+        {
+            prompt = basePrompt + Environment.NewLine +
+                "Return JSON keys: kind (must be 'texture'), summary, assetPath, width, height, palette, pixels. " +
+                "width and height must each be exactly 16 or 32. palette must be an array of 1 to 64 hex colors such as #RRGGBB or #AARRGGBB. " +
+                "pixels must be an array of exactly height rows; every row must be an array of exactly width integer palette indexes starting at zero. " +
+                "Every pixel index must reference an existing palette entry. assetPath must be a safe relative Minecraft asset path ending in .png. " +
+                "Do not include any other output format.";
+        }
+        else
+        {
+            prompt = basePrompt + Environment.NewLine +
+                "Return JSON keys: kind (must be 'project'), summary, files. files must be an array of objects, each with path and content strings. " +
+                "Include every file needed for a minimal complete project: Gradle build files, settings, loader metadata, Java source, resources, assets, and a README as appropriate. " +
+                "For a resource pack include pack.mcmeta, required model JSON, and asset files. For a mod include correct loader metadata, mod entry point, registrations, and resources. " +
+                "Use forward-slash relative paths. Never include absolute paths, '..' path segments, binary data, or Markdown fences. " +
+                "Keep each file content as plain text. Do not put PNG binary content in files; use the texture mode for PNG output.";
+        }
 
-Return a strict JSON object only, with width 16 or 32, height 16 or 32, a palette array of hex colors, and a pixels array of exactly height rows, each exactly width palette indices. Use transparent pixels only if appropriate. Then explain the intended asset path and whether this texture needs an item, block, entity, or armor model. No markdown fences around the JSON."
-        };
-        Navigate("chat", "AI Chat", "Minecraft Studio request • " + task);
-        ChatInput.Text = prompt;
-        await SendMessage();
+        busy = true;
+        GenerateMinecraftButton.IsEnabled = false;
+        MinecraftStatusText.Text = "Asking " + provider + " to generate the project…";
+        try
+        {
+            var response = await AskProvider(prompt);
+            using var document = JsonDocument.Parse(ExtractJsonObject(response));
+            var root = document.RootElement;
+            var summary = root.TryGetProperty("summary", out var summaryElement) ? summaryElement.GetString() ?? "" : "";
+            var basePath = MinecraftOutputPathBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(basePath) || !Path.IsPathRooted(basePath))
+                basePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "KlewiMinecraft");
+            Directory.CreateDirectory(basePath);
+
+            var outputName = MakeSafeFileName(name);
+            var outputDirectory = Path.Combine(basePath, outputName + "-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+            Directory.CreateDirectory(outputDirectory);
+
+            if (task == "Texture design (pixel art)")
+            {
+                if (!root.TryGetProperty("kind", out var kind) || kind.GetString() != "texture")
+                    throw new InvalidDataException("AI response is not a texture manifest.");
+                var relativeAssetPath = root.GetProperty("assetPath").GetString() ?? "textures/generated.png";
+                var texturePath = GetSafeOutputPath(outputDirectory, relativeAssetPath);
+                Directory.CreateDirectory(Path.GetDirectoryName(texturePath)!);
+                WriteTexturePng(root, texturePath);
+                File.WriteAllText(Path.Combine(outputDirectory, "README.txt"),
+                    "Generated Minecraft texture" + Environment.NewLine +
+                    "Asset path: " + relativeAssetPath + Environment.NewLine +
+                    "Minecraft version: " + version + Environment.NewLine +
+                    "Description: " + idea + Environment.NewLine + summary);
+            }
+            else
+            {
+                if (!root.TryGetProperty("kind", out var kind) || kind.GetString() != "project")
+                    throw new InvalidDataException("AI response is not a project manifest.");
+                var files = root.GetProperty("files");
+                if (files.ValueKind != JsonValueKind.Array || files.GetArrayLength() == 0 || files.GetArrayLength() > 150)
+                    throw new InvalidDataException("The generated project must contain between 1 and 150 files.");
+
+                long totalBytes = 0;
+                foreach (var file in files.EnumerateArray())
+                {
+                    var relative = file.GetProperty("path").GetString() ?? "";
+                    var content = file.GetProperty("content").GetString() ?? "";
+                    var target = GetSafeOutputPath(outputDirectory, relative);
+                    var bytes = Encoding.UTF8.GetByteCount(content);
+                    totalBytes += bytes;
+                    if (bytes > 2 * 1024 * 1024 || totalBytes > 15 * 1024 * 1024)
+                        throw new InvalidDataException("Generated project is too large (limit: 2 MB per file, 15 MB total).");
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.WriteAllText(target, content, new UTF8Encoding(false));
+                }
+                var readme = Path.Combine(outputDirectory, "KLEWI-GENERATED.txt");
+                if (!File.Exists(readme))
+                    File.WriteAllText(readme, "Generated by Klewi Desktop Minecraft Studio." + Environment.NewLine +
+                        "Minecraft: " + version + Environment.NewLine + "Loader: " + loader + Environment.NewLine +
+                        "Review source files and verify loader/version compatibility before building.");
+            }
+
+            var zipPath = outputDirectory + ".zip";
+            ZipFile.CreateFromDirectory(outputDirectory, zipPath, CompressionLevel.Optimal, false);
+            MinecraftStatusText.Text = "Created: " + outputDirectory + Environment.NewLine + "ZIP: " + zipPath +
+                (string.IsNullOrWhiteSpace(summary) ? "" : Environment.NewLine + summary);
+            MessageBox.Show("Minecraft files and ZIP were created successfully.\n\n" + zipPath,
+                "Klewi Minecraft Studio", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MinecraftStatusText.Text = "Generation failed: " + ex.Message;
+            MessageBox.Show("Klewi could not create the Minecraft output:\n\n" + ex.Message,
+                "Minecraft Studio", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            busy = false;
+            GenerateMinecraftButton.IsEnabled = true;
+        }
     }
+
+    private static string ExtractJsonObject(string response)
+    {
+        var start = response.IndexOf('{');
+        var end = response.LastIndexOf('}');
+        if (start < 0 || end <= start) throw new InvalidDataException("AI did not return a JSON object.");
+        return response.Substring(start, end - start + 1);
+    }
+
+    private static string MakeSafeFileName(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var chars = value.Trim().Select(ch => invalid.Contains(ch) || ch == '/' || ch == '\\' ? '_' : ch).ToArray();
+        var result = new string(chars).Trim().Trim('.');
+        return string.IsNullOrWhiteSpace(result) ? "MinecraftProject" : result;
+    }
+
+    private static string GetSafeOutputPath(string root, string relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath) || Path.IsPathRooted(relativePath) || relativePath.Contains(':'))
+            throw new InvalidDataException("Generated file path must be relative.");
+        var normalized = relativePath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+        if (normalized.Split(Path.DirectorySeparatorChar).Any(part => part == ".." || part == "." || part.Length == 0))
+            throw new InvalidDataException("Generated file path contains an unsafe path segment.");
+        var fullRoot = Path.GetFullPath(root) + Path.DirectorySeparatorChar;
+        var fullPath = Path.GetFullPath(Path.Combine(root, normalized));
+        if (!fullPath.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Generated file path escapes the selected output folder.");
+        return fullPath;
+    }
+
+    private static void WriteTexturePng(JsonElement root, string outputPath)
+    {
+        var width = root.GetProperty("width").GetInt32();
+        var height = root.GetProperty("height").GetInt32();
+        if ((width != 16 && width != 32) || (height != 16 && height != 32))
+            throw new InvalidDataException("Texture dimensions must be 16x16, 16x32, 32x16, or 32x32.");
+
+        var paletteElement = root.GetProperty("palette");
+        if (paletteElement.ValueKind != JsonValueKind.Array || paletteElement.GetArrayLength() == 0 || paletteElement.GetArrayLength() > 64)
+            throw new InvalidDataException("Texture palette must contain 1 to 64 colors.");
+        var palette = new List<Color>();
+        foreach (var colorElement in paletteElement.EnumerateArray())
+        {
+            var hex = (colorElement.GetString() ?? "").Trim().TrimStart('#');
+            if (hex.Length == 6)
+                palette.Add(Color.FromRgb(Convert.ToByte(hex.Substring(0, 2), 16), Convert.ToByte(hex.Substring(2, 2), 16), Convert.ToByte(hex.Substring(4, 2), 16)));
+            else if (hex.Length == 8)
+                palette.Add(Color.FromArgb(Convert.ToByte(hex.Substring(0, 2), 16), Convert.ToByte(hex.Substring(2, 2), 16), Convert.ToByte(hex.Substring(4, 2), 16), Convert.ToByte(hex.Substring(6, 2), 16)));
+            else
+                throw new InvalidDataException("Palette colors must be #RRGGBB or #AARRGGBB.");
+        }
+
+        var pixels = root.GetProperty("pixels");
+        if (pixels.ValueKind != JsonValueKind.Array || pixels.GetArrayLength() != height)
+            throw new InvalidDataException("Texture pixel grid has an invalid height.");
+        var buffer = new byte[width * height * 4];
+        var y = 0;
+        foreach (var row in pixels.EnumerateArray())
+        {
+            if (row.ValueKind != JsonValueKind.Array || row.GetArrayLength() != width)
+                throw new InvalidDataException("Every texture pixel row must match the selected width.");
+            var x = 0;
+            foreach (var pixel in row.EnumerateArray())
+            {
+                var index = pixel.GetInt32();
+                if (index < 0 || index >= palette.Count) throw new InvalidDataException("Texture grid references a missing palette color.");
+                var color = palette[index];
+                var offset = (y * width + x) * 4;
+                buffer[offset] = color.B;
+                buffer[offset + 1] = color.G;
+                buffer[offset + 2] = color.R;
+                buffer[offset + 3] = color.A;
+                x++;
+            }
+            y++;
+        }
+
+        var bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
+        bitmap.WritePixels(new Int32Rect(0, 0, width, height), buffer, width * 4, 0);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var stream = File.Create(outputPath);
+        encoder.Save(stream);
+    }
+
     private void SettingsNav_Click(object s, RoutedEventArgs e) { ApiKeyBox.Password = apiKey; ProviderCombo.SelectedIndex = provider switch { "OpenAI" => 1, "OpenRouter" => 2, _ => 0 }; ModelBox.Text = model; Navigate("settings", "Settings", "Configure your AI provider."); }
     private void ProviderCombo_SelectionChanged(object s, SelectionChangedEventArgs e)
     {
