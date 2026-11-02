@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     {
         ChatPage.Visibility = page == "chat" ? Visibility.Visible : Visibility.Collapsed;
         ProjectPage.Visibility = page == "project" ? Visibility.Visible : Visibility.Collapsed;
+        MinecraftPage.Visibility = page == "minecraft" ? Visibility.Visible : Visibility.Collapsed;
         TerminalPage.Visibility = page == "terminal" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPage.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
         PageTitle.Text = title; PageSubtitle.Text = subtitle;
@@ -36,6 +37,30 @@ public partial class MainWindow : Window
     private void ChatNav_Click(object s, RoutedEventArgs e) => Navigate("chat", "AI Chat", "Ask about code, debug errors, and plan changes.");
     private void ProjectNav_Click(object s, RoutedEventArgs e) => Navigate("project", "Project", "Browse files in your workspace.");
     private void TerminalNav_Click(object s, RoutedEventArgs e) => Navigate("terminal", "Terminal", "Run a limited set of developer commands.");
+    private void MinecraftNav_Click(object s, RoutedEventArgs e) => Navigate("minecraft", "Minecraft Studio", "Create mod and resource-pack plans with AI.");
+
+    private async void GenerateMinecraft_Click(object sender, RoutedEventArgs e)
+    {
+        var task = (MinecraftTaskCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Minecraft mod (Java)";
+        var loader = (MinecraftLoaderCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Fabric";
+        var version = MinecraftVersionBox.Text.Trim();
+        var name = MinecraftNameBox.Text.Trim();
+        var idea = MinecraftIdeaBox.Text.Trim();
+        if (version.Length == 0 || name.Length == 0 || idea.Length == 0)
+        {
+            MessageBox.Show("Fill in the Minecraft version, project name, and idea first.", "Minecraft Studio", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var prompt = task switch
+        {
+            "Minecraft mod (Java)" => $@"Act as an experienced Minecraft Java mod developer. Prepare a complete, version-correct starter project specification for: {name}.\nMinecraft version: {version}.\nLoader: {loader}.\nIdea: {idea}\n\nReturn: 1) compatibility assumptions and required Java version; 2) exact project folder tree; 3) every required file with its relative path and complete contents in a separate fenced code block; 4) build and test commands; 5) installation instructions. Use official loader conventions for this exact version. Do not invent APIs. If version compatibility is uncertain, say so and ask for verification. Keep code consistent across files.",
+            "Resource pack" => $@"Act as an expert Minecraft resource-pack developer. Design a complete resource pack named {name}.\nMinecraft version: {version}.\nIdea: {idea}\n\nReturn the exact folder tree, pack.mcmeta with a correct pack_format only if verified (otherwise clearly mark it for verification), every required model/override JSON and asset path, and complete file contents in separate fenced code blocks. Explain how to install and test it.",
+            _ => $@"Design a Minecraft pixel-art texture named {name}. Target Minecraft version: {version}.\nDescription: {idea}\n\nReturn a strict JSON object only, with width 16 or 32, height 16 or 32, a palette array of hex colors, and a pixels array of exactly height rows, each exactly width palette indices. Use transparent pixels only if appropriate. Then explain the intended asset path and whether this texture needs an item, block, entity, or armor model. No markdown fences around the JSON."
+        };
+        Navigate("chat", "AI Chat", "Minecraft Studio request • " + task);
+        ChatInput.Text = prompt;
+        await SendMessage();
+    }
     private void SettingsNav_Click(object s, RoutedEventArgs e) { ApiKeyBox.Password = apiKey; ProviderCombo.SelectedIndex = provider switch { "OpenAI" => 1, "OpenRouter" => 2, _ => 0 }; ModelBox.Text = model; Navigate("settings", "Settings", "Configure your AI provider."); }
     private void ProviderCombo_SelectionChanged(object s, SelectionChangedEventArgs e)
     {
