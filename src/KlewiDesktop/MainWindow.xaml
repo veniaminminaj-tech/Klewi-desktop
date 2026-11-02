@@ -15,6 +15,7 @@
      <TextBlock Text="WORKSPACE" Foreground="{StaticResource Muted}" FontSize="10" Margin="5,0,0,8"/>
      <Button Content="✦  AI Chat" HorizontalContentAlignment="Left" Click="ChatNav_Click"/>
      <Button Content="▣  Project" HorizontalContentAlignment="Left" Click="ProjectNav_Click"/>
+     <Button Content="⬡  Minecraft Studio" HorizontalContentAlignment="Left" Click="MinecraftNav_Click"/>
      <Button Content="⌘  Terminal" HorizontalContentAlignment="Left" Click="TerminalNav_Click"/>
      <Button Content="⚙  Settings" HorizontalContentAlignment="Left" Click="SettingsNav_Click"/>
     </StackPanel>
@@ -52,6 +53,33 @@
       <Border Grid.Column="0" Background="{StaticResource Panel}" CornerRadius="12" Padding="12"><TreeView x:Name="ProjectTree" SelectedItemChanged="ProjectTree_SelectedItemChanged" Background="Transparent" Foreground="{StaticResource MainText}" BorderThickness="0"/></Border>
       <Border Grid.Column="2" Background="{StaticResource Panel}" CornerRadius="12" Padding="14"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><TextBlock x:Name="FilePreviewStatus" Text="Select a text file to preview it." Foreground="{StaticResource Muted}" Margin="0,0,0,10"/><TextBox x:Name="FilePreview" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Background="#0B1018" BorderThickness="0"/><Button Grid.Row="2" Content="Use selected file in AI chat" HorizontalAlignment="Right" Background="{StaticResource Accent}" Margin="0,10,0,0" Click="UseFileInChat_Click"/></Grid></Border>
      </Grid>
+    </Grid>
+    <Grid x:Name="MinecraftPage" Visibility="Collapsed">
+     <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
+      <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="18" Margin="0,0,0,14">
+       <StackPanel>
+        <TextBlock Text="Minecraft Studio" FontSize="20" FontWeight="SemiBold"/>
+        <TextBlock Text="Describe what you want to build. Klewi will prepare code and asset specifications for your selected Minecraft setup." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,14"/>
+        <TextBlock Text="What are we making?" Foreground="{StaticResource Muted}"/>
+        <ComboBox x:Name="MinecraftTaskCombo" Width="300" HorizontalAlignment="Left" SelectedIndex="0" Padding="7" Margin="0,5,0,12">
+         <ComboBoxItem Content="Minecraft mod (Java)"/><ComboBoxItem Content="Resource pack"/><ComboBoxItem Content="Texture design (pixel art)"/>
+        </ComboBox>
+        <TextBlock Text="Mod loader" Foreground="{StaticResource Muted}"/>
+        <ComboBox x:Name="MinecraftLoaderCombo" Width="300" HorizontalAlignment="Left" SelectedIndex="0" Padding="7" Margin="0,5,0,12">
+         <ComboBoxItem Content="Fabric"/><ComboBoxItem Content="Forge"/><ComboBoxItem Content="NeoForge"/><ComboBoxItem Content="Not applicable (resource pack)"/>
+        </ComboBox>
+        <TextBlock Text="Minecraft version" Foreground="{StaticResource Muted}"/>
+        <TextBox x:Name="MinecraftVersionBox" Width="300" HorizontalAlignment="Left" Padding="8" Text="1.21.1" Margin="0,5,0,12"/>
+        <TextBlock Text="Project / texture name" Foreground="{StaticResource Muted}"/>
+        <TextBox x:Name="MinecraftNameBox" Width="420" HorizontalAlignment="Left" Padding="8" Text="My Minecraft Project" Margin="0,5,0,12"/>
+        <TextBlock Text="Describe your idea" Foreground="{StaticResource Muted}"/>
+        <TextBox x:Name="MinecraftIdeaBox" MinHeight="110" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Padding="9" Text="Create a new item with a custom texture and crafting recipe."/>
+        <Button Content="Generate with Klewi  ✦" Background="{StaticResource Accent}" HorizontalAlignment="Left" Padding="18,10" Margin="0,14,0,0" Click="GenerateMinecraft_Click"/>
+        <TextBlock Text="Note: this first version sends a detailed build request to AI chat. It does not yet create files, compile a mod, or export PNG textures automatically. Review generated code before running it." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+       </StackPanel>
+      </Border>
+      <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="16"><StackPanel><TextBlock Text="Supported output" FontWeight="SemiBold"/><TextBlock Text="Mods: Java source, registries, items, blocks, recipes, metadata and build files. Resource packs: pack.mcmeta, model JSON and asset paths. Textures: 16×16 or 32×32 pixel-art palettes and pixel grids that can be converted to PNG in a future step." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,7,0,0"/></StackPanel></Border>
+     </StackPanel></ScrollViewer>
     </Grid>
     <Grid x:Name="TerminalPage" Visibility="Collapsed">
      <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
