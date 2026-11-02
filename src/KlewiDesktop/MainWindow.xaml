@@ -59,7 +59,7 @@
       <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="18" Margin="0,0,0,14">
        <StackPanel>
         <TextBlock Text="Minecraft Studio" FontSize="20" FontWeight="SemiBold"/>
-        <TextBlock Text="Describe what you want to build. Klewi will prepare code and asset specifications for your selected Minecraft setup." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,14"/>
+        <TextBlock Text="Describe the mod or pack. Klewi will generate real project files and package them as a ZIP." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,14"/>
         <TextBlock Text="What are we making?" Foreground="{StaticResource Muted}"/>
         <ComboBox x:Name="MinecraftTaskCombo" Width="300" HorizontalAlignment="Left" SelectedIndex="0" Padding="7" Margin="0,5,0,12">
          <ComboBoxItem Content="Minecraft mod (Java)"/><ComboBoxItem Content="Resource pack"/><ComboBoxItem Content="Texture design (pixel art)"/>
@@ -72,13 +72,16 @@
         <TextBox x:Name="MinecraftVersionBox" Width="300" HorizontalAlignment="Left" Padding="8" Text="1.21.1" Margin="0,5,0,12"/>
         <TextBlock Text="Project / texture name" Foreground="{StaticResource Muted}"/>
         <TextBox x:Name="MinecraftNameBox" Width="420" HorizontalAlignment="Left" Padding="8" Text="My Minecraft Project" Margin="0,5,0,12"/>
+        <TextBlock Text="Output folder" Foreground="{StaticResource Muted}"/>
+        <DockPanel Margin="0,5,0,12"><TextBox x:Name="MinecraftOutputPathBox" IsReadOnly="True" Padding="8" Text="Documents\\KlewiMinecraft"/><Button DockPanel.Dock="Right" Content="Browse…" Click="ChooseMinecraftOutput_Click"/></DockPanel>
         <TextBlock Text="Describe your idea" Foreground="{StaticResource Muted}"/>
         <TextBox x:Name="MinecraftIdeaBox" MinHeight="110" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Padding="9" Text="Create a new item with a custom texture and crafting recipe."/>
-        <Button Content="Generate with Klewi  ✦" Background="{StaticResource Accent}" HorizontalAlignment="Left" Padding="18,10" Margin="0,14,0,0" Click="GenerateMinecraft_Click"/>
-        <TextBlock Text="Note: this first version sends a detailed build request to AI chat. It does not yet create files, compile a mod, or export PNG textures automatically. Review generated code before running it." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+        <Button x:Name="GenerateMinecraftButton" Content="Generate project + ZIP  ✦" Background="{StaticResource Accent}" HorizontalAlignment="Left" Padding="18,10" Margin="0,14,0,0" Click="GenerateMinecraft_Click"/>
+        <TextBlock x:Name="MinecraftStatusText" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+        <TextBlock Text="Generated files are written to the selected folder and packaged into a ZIP. Review generated source code before building or installing it. Mod compilation is not automatic yet." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
        </StackPanel>
       </Border>
-      <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="16"><StackPanel><TextBlock Text="Supported output" FontWeight="SemiBold"/><TextBlock Text="Mods: Java source, registries, items, blocks, recipes, metadata and build files. Resource packs: pack.mcmeta, model JSON and asset paths. Textures: 16×16 or 32×32 pixel-art palettes and pixel grids that can be converted to PNG in a future step." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,7,0,0"/></StackPanel></Border>
+      <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="16"><StackPanel><TextBlock Text="Supported output" FontWeight="SemiBold"/><TextBlock Text="Mods: Java source, registries, items, blocks, recipes, metadata and build files. Resource packs: pack.mcmeta, model JSON and asset paths. Textures: real 16×16 or 32×32 PNG files generated from an AI-provided pixel grid." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,7,0,0"/></StackPanel></Border>
      </StackPanel></ScrollViewer>
     </Grid>
     <Grid x:Name="TerminalPage" Visibility="Collapsed">
