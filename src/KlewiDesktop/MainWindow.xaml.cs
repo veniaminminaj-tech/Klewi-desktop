@@ -75,6 +75,7 @@ public partial class MainWindow : Window
         provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? provider;
         model = ModelBox.Text.Trim();
         if (apiKey.Length == 0) { SettingsStatus.Text = "Enter an API key first."; return; }
+        if (model.Length == 0) { SettingsStatus.Text = "Enter a model ID."; return; }
         SettingsStatus.Text = "Testing connection…";
         try { SettingsStatus.Text = "Connected: " + (await AskProvider("Reply exactly: Klewi connection works.")).Trim(); }
         catch (Exception ex) { SettingsStatus.Text = "Connection failed: " + ex.Message; }
@@ -89,7 +90,11 @@ public partial class MainWindow : Window
             var body = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"Gemini HTTP {(int)response.StatusCode}: {(body.Length > 600 ? body[..600] : body)}");
             using var doc = JsonDocument.Parse(body);
-            return doc.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString() ?? "(Empty response)";
+            if (!doc.RootElement.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
+                throw new InvalidOperationException("Gemini returned no candidates. Check model access, prompt safety, and API quota.");
+            var parts = candidates[0].GetProperty("content").GetProperty("parts");
+            var textParts = parts.EnumerateArray().Where(x => x.TryGetProperty("text", out _)).Select(x => x.GetProperty("text").GetString()).Where(x => !string.IsNullOrWhiteSpace(x));
+            return string.Join("\\n", textParts) is { Length: > 0 } answer ? answer : "(Empty response)";
         }
 
         var endpoint = provider == "OpenRouter" ? "https://openrouter.ai/api/v1/chat/completions" : "https://api.openai.com/v1/chat/completions";
@@ -131,7 +136,7 @@ public partial class MainWindow : Window
             var search = new TextBox { Margin = new Thickness(0,0,0,10), ToolTip = "Filter model IDs" };
             DockPanel.SetDock(search, Dock.Top); panel.Children.Add(search);
             var list = new ListBox { ItemsSource = names, Background = Brushes.Transparent, Foreground = Brushes.White };
-            list.MouseDoubleClick += (_, _) => { if (list.SelectedItem is string chosen) { ModelBox.Text = chosen; picker.DialogResult = true; picker.Close(); } };
+            list.MouseDoubleClick += (_, _) => { if (list.SelectedItem is string chosen) { ModelBox.Text = chosen; picker.DialogResult = true; } };
             panel.Children.Add(list); picker.Content = panel;
             search.TextChanged += (_, _) => list.ItemsSource = names.Where(n => n!.Contains(search.Text, StringComparison.OrdinalIgnoreCase)).ToList();
             picker.ShowDialog(); SettingsStatus.Text = "Choose a model and save settings.";
@@ -197,7 +202,9 @@ public partial class MainWindow : Window
             if (exe is "pwd" or "dir" or "ls") { psi.ArgumentList.Add("-NoProfile"); psi.ArgumentList.Add("-Command"); psi.ArgumentList.Add(exe == "pwd" ? "Get-Location" : "Get-ChildItem -Name"); }
             else foreach (var arg in words.Skip(1)) psi.ArgumentList.Add(arg);
             using var process = Process.Start(psi)!; var stdout = process.StandardOutput.ReadToEndAsync(); var stderr = process.StandardError.ReadToEndAsync();
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20)); await process.WaitForExitAsync(cts.Token);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            try { await process.WaitForExitAsync(cts.Token); }
+            catch (OperationCanceledException) { if (!process.HasExited) process.Kill(entireProcessTree: true); throw; }
             TerminalOutput.Text += await stdout + await stderr + $"\n[exit code {process.ExitCode}]\n";
         } catch (OperationCanceledException) { TerminalOutput.Text += "Command timed out after 20 seconds.\n"; }
           catch (Exception ex) { TerminalOutput.Text += "Error: " + ex.Message + "\n"; }
