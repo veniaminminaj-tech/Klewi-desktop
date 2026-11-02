@@ -3,8 +3,9 @@
 Windows desktop prototype built with C# WPF and .NET 10.
 
 ## Features
-- Dark UI with blue accents
-- Real AI chat through Gemini, OpenAI, and OpenRouter-compatible chat APIs\n- OpenRouter public model catalog browser
+- Dark UI with blue accents and a Klewi mascot with glowing green square eyes
+- Real AI chat through Gemini, OpenAI, and OpenRouter-compatible chat APIs
+- OpenRouter public model catalog browser
 - API key protected with Windows DPAPI
 - Project folder picker, file tree, and text-file preview
 - Explicitly attach a selected source file to the next AI chat request (100 KB limit; common secret filenames are blocked)
