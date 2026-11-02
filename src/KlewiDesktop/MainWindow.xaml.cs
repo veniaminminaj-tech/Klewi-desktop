@@ -23,6 +23,13 @@ public partial class MainWindow : Window
     private string apiKey = "";
     private string model = "gemini-2.5-flash";
     private string provider = "Gemini";
+    private string customInstructions = "";
+    private double chatTemperature = 0.3;
+    private int chatMaxTokens = 4096;
+    private string minecraftDefaultVersion = "1.21.1";
+    private string minecraftDefaultLoader = "Fabric";
+    private string minecraftDefaultTask = "Minecraft mod (Java)";
+    private string minecraftOutputFolder = "";
     private bool busy;
 
     public MainWindow() { InitializeComponent(); LoadSettings(); UpdateStatus(); }
@@ -267,7 +274,34 @@ public partial class MainWindow : Window
         encoder.Save(stream);
     }
 
-    private void SettingsNav_Click(object s, RoutedEventArgs e) { ApiKeyBox.Password = apiKey; ProviderCombo.SelectedIndex = provider switch { "OpenAI" => 1, "OpenRouter" => 2, _ => 0 }; ModelBox.Text = model; Navigate("settings", "Settings", "Configure your AI provider."); }
+    private void SettingsNav_Click(object s, RoutedEventArgs e)
+    {
+        ApiKeyBox.Password = apiKey;
+        ProviderCombo.SelectedIndex = provider switch { "OpenAI" => 1, "OpenRouter" => 2, _ => 0 };
+        ModelBox.Text = model;
+        SettingsInstructionsBox.Text = customInstructions;
+        SettingsTemperatureSlider.Value = chatTemperature;
+        SettingsMaxTokensBox.Text = chatMaxTokens.ToString();
+        SettingsMinecraftVersionBox.Text = MinecraftVersionBox.Text;
+        SettingsMinecraftLoaderCombo.SelectedIndex = MinecraftLoaderCombo.SelectedIndex;
+        SettingsMinecraftTaskCombo.SelectedIndex = MinecraftTaskCombo.SelectedIndex;
+        SettingsMinecraftOutputBox.Text = MinecraftOutputPathBox.Text;
+        Navigate("settings", "Settings", "Instructions, API keys, Minecraft Studio and chat preferences.");
+    }
+
+    private void InstructionPresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (SettingsInstructionsBox is null || InstructionPresetCombo.SelectedItem is not ComboBoxItem item) return;
+        var preset = item.Content?.ToString();
+        if (preset == "Custom instructions") return;
+        SettingsInstructionsBox.Text = preset switch
+        {
+            "Explain step by step" => "Explain technical tasks in clear, numbered steps. Define unfamiliar terms and show complete examples when useful.",
+            "Short answers" => "Answer briefly and directly. Use short numbered steps for troubleshooting. Avoid unnecessary background.",
+            "Minecraft mod developer" => "Act as an experienced Minecraft Java mod developer. Respect the exact Minecraft version and loader. Never invent APIs or claim a mod compiles unless a build was actually run.",
+            _ => "You are Klewi, a helpful coding assistant. Be accurate, practical, and honest. Explain errors clearly and never claim to have changed files unless an available tool actually did so."
+        };
+    }
     private void ProviderCombo_SelectionChanged(object s, SelectionChangedEventArgs e)
     {
         if (ModelBox is null || ProviderCombo.SelectedItem is not ComboBoxItem item) return;
@@ -286,18 +320,50 @@ public partial class MainWindow : Window
             if (!string.IsNullOrEmpty(enc)) apiKey = Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(enc), null, DataProtectionScope.CurrentUser));
             if (doc.RootElement.TryGetProperty("model", out var m)) model = m.GetString() ?? model;
             if (doc.RootElement.TryGetProperty("provider", out var p)) provider = p.GetString() ?? provider;
+            if (doc.RootElement.TryGetProperty("instructions", out var instructions)) customInstructions = instructions.GetString() ?? "";
+            if (doc.RootElement.TryGetProperty("temperature", out var temperature)) chatTemperature = Math.Clamp(temperature.GetDouble(), 0, 1);
+            if (doc.RootElement.TryGetProperty("maxTokens", out var maxTokens)) chatMaxTokens = Math.Clamp(maxTokens.GetInt32(), 256, 8192);
+            if (doc.RootElement.TryGetProperty("minecraftVersion", out var mv)) minecraftDefaultVersion = mv.GetString() ?? minecraftDefaultVersion;
+            if (doc.RootElement.TryGetProperty("minecraftLoader", out var ml)) minecraftDefaultLoader = ml.GetString() ?? minecraftDefaultLoader;
+            if (doc.RootElement.TryGetProperty("minecraftTask", out var mt)) minecraftDefaultTask = mt.GetString() ?? minecraftDefaultTask;
+            if (doc.RootElement.TryGetProperty("minecraftOutputFolder", out var mo)) minecraftOutputFolder = mo.GetString() ?? "";
+            MinecraftVersionBox.Text = minecraftDefaultVersion;
+            MinecraftLoaderCombo.SelectedIndex = LoaderIndex(minecraftDefaultLoader);
+            MinecraftTaskCombo.SelectedIndex = TaskIndex(minecraftDefaultTask);
+            if (!string.IsNullOrWhiteSpace(minecraftOutputFolder)) MinecraftOutputPathBox.Text = minecraftOutputFolder;
         } catch { apiKey = ""; }
     }
+    private static int LoaderIndex(string value) => value switch { "Forge" => 1, "NeoForge" => 2, "Not applicable (resource pack)" => 3, _ => 0 };
+    private static int TaskIndex(string value) => value switch { "Resource pack" => 1, "Texture design (pixel art)" => 2, _ => 0 };
+
     private void SaveSettings_Click(object s, RoutedEventArgs e)
     {
         try {
-            apiKey = ApiKeyBox.Password.Trim(); provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Gemini"; model = ModelBox.Text.Trim();
+            var enteredKey = ApiKeyBox.Password.Trim();
+            if (enteredKey.Length > 0) apiKey = enteredKey;
+            provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Gemini";
+            model = ModelBox.Text.Trim();
             if (model.Length == 0) { SettingsStatus.Text = "Enter a model ID."; return; }
             if (apiKey.Length == 0) { SettingsStatus.Text = "Enter an API key first."; return; }
+            customInstructions = SettingsInstructionsBox.Text.Trim();
+            chatTemperature = Math.Clamp(SettingsTemperatureSlider.Value, 0, 1);
+            if (!int.TryParse(SettingsMaxTokensBox.Text.Trim(), out chatMaxTokens) || chatMaxTokens < 256 || chatMaxTokens > 8192)
+            { SettingsStatus.Text = "Maximum response tokens must be between 256 and 8192."; return; }
+            minecraftDefaultVersion = SettingsMinecraftVersionBox.Text.Trim();
+            if (minecraftDefaultVersion.Length == 0) { SettingsStatus.Text = "Enter a default Minecraft version."; return; }
+            minecraftDefaultLoader = (SettingsMinecraftLoaderCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Fabric";
+            minecraftDefaultTask = (SettingsMinecraftTaskCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Minecraft mod (Java)";
+            minecraftOutputFolder = SettingsMinecraftOutputBox.Text.Trim();
+            MinecraftVersionBox.Text = minecraftDefaultVersion;
+            MinecraftLoaderCombo.SelectedIndex = LoaderIndex(minecraftDefaultLoader);
+            MinecraftTaskCombo.SelectedIndex = TaskIndex(minecraftDefaultTask);
+            if (!string.IsNullOrWhiteSpace(minecraftOutputFolder)) MinecraftOutputPathBox.Text = minecraftOutputFolder;
             Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
             var enc = Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(apiKey), null, DataProtectionScope.CurrentUser));
-            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(new { key = enc, model, provider }));
-            SettingsStatus.Text = "Saved securely for this Windows account."; UpdateStatus();
+            var data = new { key = enc, model, provider, instructions = customInstructions, temperature = chatTemperature, maxTokens = chatMaxTokens, minecraftVersion = minecraftDefaultVersion, minecraftLoader = minecraftDefaultLoader, minecraftTask = minecraftDefaultTask, minecraftOutputFolder };
+            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(data));
+            SettingsStatus.Text = "All settings saved securely. API key is encrypted for this Windows account.";
+            UpdateStatus();
         } catch (Exception ex) { SettingsStatus.Text = "Save failed: " + ex.Message; }
     }
     private void UpdateStatus() => ProviderStatus.Text = string.IsNullOrWhiteSpace(apiKey) ? "● Provider not configured" : "● " + provider + " • " + model;
@@ -313,12 +379,18 @@ public partial class MainWindow : Window
         try { SettingsStatus.Text = "Connected: " + (await AskProvider("Reply exactly: Klewi connection works.")).Trim(); }
         catch (Exception ex) { SettingsStatus.Text = "Connection failed: " + ex.Message; }
     }
+    private string BuildSystemInstruction()
+    {
+        const string baseline = "You are Klewi, a helpful coding assistant. Be accurate, practical, and honest. You cannot access or modify local files unless a tool explicitly provides them. Never claim to have built, tested, or changed something unless it actually happened.";
+        return string.IsNullOrWhiteSpace(customInstructions) ? baseline : baseline + Environment.NewLine + Environment.NewLine + "Additional user instructions:" + Environment.NewLine + customInstructions;
+    }
+
     private async Task<string> AskProvider(string prompt)
     {
         if (provider == "Gemini")
         {
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(model)}:generateContent?key={Uri.EscapeDataString(apiKey)}";
-            var payload = new { contents = new[] { new { role = "user", parts = new[] { new { text = prompt } } } }, generationConfig = new { temperature = 0.3, maxOutputTokens = 4096 } };
+            var payload = new { systemInstruction = new { parts = new[] { new { text = BuildSystemInstruction() } } }, contents = new[] { new { role = "user", parts = new[] { new { text = prompt } } } }, generationConfig = new { temperature = chatTemperature, maxOutputTokens = chatMaxTokens } };
             using var response = await Http.PostAsync(url, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
             var body = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"Gemini HTTP {(int)response.StatusCode}: {(body.Length > 600 ? body[..600] : body)}");
@@ -340,9 +412,9 @@ public partial class MainWindow : Window
         }
         request.Content = new StringContent(JsonSerializer.Serialize(new {
             model,
-            messages = new[] { new { role = "system", content = "You are Klewi, a helpful coding assistant. Be honest about actions: you cannot access or modify local files unless a tool explicitly provides them. Explain changes clearly." }, new { role = "user", content = prompt } },
-            temperature = 0.3,
-            max_tokens = 4096
+            messages = new[] { new { role = "system", content = BuildSystemInstruction() }, new { role = "user", content = prompt } },
+            temperature = chatTemperature,
+            max_tokens = chatMaxTokens
         }), Encoding.UTF8, "application/json");
         using var compatibleResponse = await Http.SendAsync(request);
         var compatibleBody = await compatibleResponse.Content.ReadAsStringAsync();
