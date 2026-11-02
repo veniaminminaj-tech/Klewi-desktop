@@ -395,7 +395,7 @@ public partial class MainWindow : Window
     }
     private string BuildSystemInstruction()
     {
-        const string baseline = "You are Klewi, a helpful coding assistant. Be accurate, practical, and honest. You cannot access or modify local files unless a tool explicitly provides them. Never claim to have built, tested, or changed something unless it actually happened.";
+        const string baseline = "You are Klewi, a helpful coding assistant. Be accurate, practical, and honest. You can only inspect project file contents explicitly attached in chat or opened in the project editor. You may propose complete file edits, but the desktop app writes them only after the user reviews and approves them. Never claim a file was changed or a project was built unless the app confirms that action.";
         return string.IsNullOrWhiteSpace(customInstructions) ? baseline : baseline + Environment.NewLine + Environment.NewLine + "Additional user instructions:" + Environment.NewLine + customInstructions;
     }
 
@@ -685,7 +685,7 @@ public partial class MainWindow : Window
             var task = PromptForText("Ask Klewi to edit this file", "Describe the exact changes you want. Klewi will show a before/after preview and will not write until you apply it.");
             if (string.IsNullOrWhiteSpace(task)) return;
             busy = true;
-            AskAIEditButtonBusyState(true);
+            AskAIEditButton.IsEnabled = false;
             FilePreviewStatus.Text = "Klewi is preparing a proposed edit…";
             var prompt = "Edit the supplied project file according to the request. Return exactly one JSON object with string keys summary and content. content must be the COMPLETE replacement file, not a diff, with no Markdown fences. Do not include unrelated changes. Do not claim you wrote the file.\n\nFILE PATH: "
                 + Path.GetRelativePath(projectPath, path) + "\n\nUSER REQUEST:\n" + task + "\n\nCURRENT FILE CONTENT:\n" + before;
@@ -719,7 +719,7 @@ public partial class MainWindow : Window
             FilePreviewStatus.Text = "AI edit failed: " + ex.Message;
             MessageBox.Show("Klewi could not apply the edit:\n\n" + ex.Message, "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        finally { busy = false; AskAIEditButtonBusyState(false); }
+        finally { busy = false; AskAIEditButton.IsEnabled = true; }
     }
 
     private void AskAIEditButtonBusyState(bool isBusy)
