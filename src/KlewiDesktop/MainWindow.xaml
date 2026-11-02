@@ -14,6 +14,7 @@
      </StackPanel>
      <TextBlock Text="WORKSPACE" Foreground="{StaticResource Muted}" FontSize="10" Margin="5,0,0,8"/>
      <Button Content="✦  AI Chat" HorizontalContentAlignment="Left" Click="ChatNav_Click"/>
+     <Button Content="⌘  Code Assistant" HorizontalContentAlignment="Left" Click="ChatNav_Click"/>
      <Button Content="▣  Project" HorizontalContentAlignment="Left" Click="ProjectNav_Click"/>
      <Button Content="⬡  Minecraft Studio" HorizontalContentAlignment="Left" Click="MinecraftNav_Click"/>
      <Button Content="▤  ISO Tools" HorizontalContentAlignment="Left" Click="IsoNav_Click"/>
@@ -41,10 +42,19 @@
       </StackPanel></ScrollViewer>
      </Border>
      <Border Grid.Row="1" Background="{StaticResource Panel}" CornerRadius="12" Padding="9">
-      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-       <TextBox x:Name="ChatInput" MinHeight="45" MaxHeight="110" AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent" KeyDown="ChatInput_KeyDown"/>
-       <Button Grid.Column="1" Content="Send  ➤" Background="{StaticResource Accent}" Padding="20,10" Click="Send_Click"/>
-      </Grid>
+      <StackPanel>
+       <DockPanel Margin="0,0,0,7">
+        <TextBlock Text="Coding language:" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+        <ComboBox x:Name="ChatLanguageCombo" Width="220" SelectedIndex="0" Padding="5" ToolTip="Choose a language or let Klewi detect it">
+         <ComboBoxItem Content="Auto-detect"/><ComboBoxItem Content="C# / .NET"/><ComboBoxItem Content="C / C++"/><ComboBoxItem Content="Python"/><ComboBoxItem Content="Java"/><ComboBoxItem Content="JavaScript / TypeScript"/><ComboBoxItem Content="HTML / CSS"/><ComboBoxItem Content="Rust"/><ComboBoxItem Content="Go"/><ComboBoxItem Content="Kotlin"/><ComboBoxItem Content="Swift"/><ComboBoxItem Content="PHP"/><ComboBoxItem Content="Ruby"/><ComboBoxItem Content="Lua"/><ComboBoxItem Content="Dart / Flutter"/><ComboBoxItem Content="R / Julia"/><ComboBoxItem Content="SQL"/><ComboBoxItem Content="Bash / Shell"/><ComboBoxItem Content="PowerShell"/><ComboBoxItem Content="Assembly (FASM)"/><ComboBoxItem Content="Solidity / Smart contracts"/><ComboBoxItem Content="Other / multiple languages"/>
+        </ComboBox>
+        <TextBlock Text="Klewi Code Assistant • multilingual programming" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+       </DockPanel>
+       <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBox x:Name="ChatInput" MinHeight="45" MaxHeight="110" AcceptsReturn="True" TextWrapping="Wrap" BorderThickness="0" Background="Transparent" KeyDown="ChatInput_KeyDown"/>
+        <Button Grid.Column="1" Content="Send  ➤" Background="{StaticResource Accent}" Padding="20,10" Click="Send_Click"/>
+       </Grid>
+      </StackPanel>
      </Border>
     </Grid>
     <Grid x:Name="ProjectPage" Visibility="Collapsed">
