@@ -16,6 +16,7 @@
      <Button Content="✦  AI Chat" HorizontalContentAlignment="Left" Click="ChatNav_Click"/>
      <Button Content="▣  Project" HorizontalContentAlignment="Left" Click="ProjectNav_Click"/>
      <Button Content="⬡  Minecraft Studio" HorizontalContentAlignment="Left" Click="MinecraftNav_Click"/>
+     <Button Content="▤  ISO Tools" HorizontalContentAlignment="Left" Click="IsoNav_Click"/>
      <Button Content="⌘  Terminal" HorizontalContentAlignment="Left" Click="TerminalNav_Click"/>
      <Button Content="⚙  Settings" HorizontalContentAlignment="Left" Click="SettingsNav_Click"/>
     </StackPanel>
@@ -96,6 +97,38 @@
       </Border>
       <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="16"><StackPanel><TextBlock Text="Supported output" FontWeight="SemiBold"/><TextBlock Text="Mods: Java source, registries, items, blocks, recipes, metadata and build files. Resource packs: pack.mcmeta, model JSON and asset paths. Textures: real 16×16 or 32×32 PNG files generated from an AI-provided pixel grid." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,7,0,0"/></StackPanel></Border>
      </StackPanel></ScrollViewer>
+    </Grid>
+    <Grid x:Name="IsoPage" Visibility="Collapsed">
+     <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+       <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="18" Margin="0,0,0,14">
+        <StackPanel>
+         <TextBlock Text="ISO Tools" FontSize="20" FontWeight="SemiBold"/>
+         <TextBlock Text="Перегляд та підключення інсталяційних ISO-образів Windows XP, 7, 8, 10 і 11. Оригінальний ISO-файл не змінюється." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,14"/>
+         <TextBlock Text="Версія Windows в образі" Foreground="{StaticResource Muted}"/>
+         <ComboBox x:Name="IsoWindowsVersionCombo" Width="300" HorizontalAlignment="Left" SelectedIndex="3" Padding="7" Margin="0,5,0,12">
+          <ComboBoxItem Content="Windows XP"/><ComboBoxItem Content="Windows 7"/><ComboBoxItem Content="Windows 8 / 8.1"/><ComboBoxItem Content="Windows 10"/><ComboBoxItem Content="Windows 11"/>
+         </ComboBox>
+         <TextBlock Text="ISO-файл" Foreground="{StaticResource Muted}"/>
+         <DockPanel Margin="0,5,0,12"><TextBox x:Name="IsoPathBox" IsReadOnly="True" Padding="8" Text="ISO не вибрано"/><Button DockPanel.Dock="Right" Content="Вибрати ISO…" Click="ChooseIso_Click"/></DockPanel>
+         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+          <Button Content="Інформація + SHA-256" Click="InspectIso_Click" Background="{StaticResource Accent}"/>
+          <Button Content="Підключити ISO" Click="MountIso_Click"/>
+          <Button Content="Відкрити диск" Click="OpenMountedIso_Click"/>
+          <Button Content="Відключити ISO" Click="UnmountIso_Click"/>
+         </StackPanel>
+         <TextBlock x:Name="IsoStatusText" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0" Text="Вибери ISO-файл, щоб переглянути його властивості або підключити як віртуальний DVD-диск."/>
+        </StackPanel>
+       </Border>
+       <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="16">
+        <StackPanel>
+         <TextBlock Text="Що підтримується" FontWeight="SemiBold"/>
+         <TextBlock Text="• Windows XP, 7, 8/8.1, 10 і 11 як цільові образи.\n• Перевірка розміру, дати та SHA-256.\n• Підключення ISO у Windows 10/11 та перегляд файлів через Провідник.\n• Безпечне відключення віртуального диска." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+         <TextBlock Text="Обмеження: ця вкладка не створює, не патчить і не записує завантажувальні USB-носії. Для інсталяції використовуй офіційний образ і перевіряй його джерело. Підключення ISO доступне на Windows 8 або новіше." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+        </StackPanel>
+       </Border>
+      </StackPanel>
+     </ScrollViewer>
     </Grid>
     <Grid x:Name="TerminalPage" Visibility="Collapsed">
      <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
