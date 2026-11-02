@@ -1,0 +1,28 @@
+<Application x:Class="KlewiDesktop.App"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ StartupUri="MainWindow.xaml">
+ <Application.Resources>
+  <SolidColorBrush x:Key="Bg" Color="#10131B"/>
+  <SolidColorBrush x:Key="Panel" Color="#181E2A"/>
+  <SolidColorBrush x:Key="Panel2" Color="#202A3A"/>
+  <SolidColorBrush x:Key="Accent" Color="#398BFF"/>
+  <SolidColorBrush x:Key="MainText" Color="#EAF1FC"/>
+  <SolidColorBrush x:Key="Muted" Color="#91A0B6"/>
+  <Style TargetType="Button">
+   <Setter Property="Foreground" Value="{StaticResource MainText}"/>
+   <Setter Property="Background" Value="{StaticResource Panel2}"/>
+   <Setter Property="BorderThickness" Value="0"/>
+   <Setter Property="Padding" Value="12,9"/>
+   <Setter Property="Margin" Value="3"/>
+   <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+  <Style TargetType="TextBox">
+   <Setter Property="Foreground" Value="{StaticResource MainText}"/>
+   <Setter Property="Background" Value="#111722"/>
+   <Setter Property="BorderBrush" Value="#34445B"/>
+   <Setter Property="Padding" Value="10"/>
+   <Setter Property="CaretBrush" Value="White"/>
+  </Style>
+ </Application.Resources>
+</Application>
