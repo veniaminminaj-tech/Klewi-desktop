@@ -9,7 +9,7 @@ Windows desktop prototype built with C# WPF and .NET 10.
 - API key protected with Windows DPAPI
 - Project folder picker, file tree, and text-file preview
 - Explicitly attach a selected source file to the next AI chat request (100 KB limit; common secret filenames are blocked)
-- Minecraft Studio request builder for Java mods, resource packs, and pixel-art texture specifications\n- Restricted developer terminal
+- Minecraft Studio generator that writes AI-generated Java mod/resource-pack project files to disk, exports real pixel-art PNG textures, and creates ZIP archives\n- Restricted developer terminal
 
 ## Requirements
 - Windows 10/11
@@ -23,4 +23,4 @@ dotnet run --project src/KlewiDesktop/KlewiDesktop.csproj
 Open **Settings**, enter an API key for your selected provider, save it securely, then test the connection.
 
 ## Prototype limitations
-Minecraft Studio currently sends structured requests to the configured AI provider; it does not yet write generated project files, compile mods, or export texture PNG files automatically. Autonomous multi-file editing, texture PNG export, plugin SDK, GitHub integration, Computer Control, installer, and automated tests are not implemented yet. File context is only sent when the user explicitly selects a supported file and clicks the attach button. The app blocks common secret filenames, but this is not a complete secret scanner; review file contents before sending them to an external AI provider. OpenAI-compatible providers require a valid API key and model ID. OpenRouter model discovery reads its public catalog; actual inference may incur provider charges. The terminal intentionally permits only a small set of commands.
+Minecraft Studio writes structured AI-generated project files to the selected output folder, exports 16×16 or 32×32 PNG textures from validated pixel grids, and packages the result as a ZIP. It does not yet compile generated Minecraft mods into JAR files or verify loader compatibility by running Gradle. Review generated source code before building or installing it. Autonomous multi-file editing, plugin SDK, GitHub integration, Computer Control, installer, and automated tests are not implemented yet. File context is only sent when the user explicitly selects a supported file and clicks the attach button. The app blocks common secret filenames, but this is not a complete secret scanner; review file contents before sending them to an external AI provider. OpenAI-compatible providers require a valid API key and model ID. OpenRouter model discovery reads its public catalog; actual inference may incur provider charges. The terminal intentionally permits only a small set of commands.
