@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private string? projectPath;
     private string apiKey = "";
     private string model = "gemini-2.5-flash";
+    private string provider = "Gemini";
     private bool busy;
 
     public MainWindow() { InitializeComponent(); LoadSettings(); UpdateStatus(); }
@@ -33,7 +34,14 @@ public partial class MainWindow : Window
     private void ChatNav_Click(object s, RoutedEventArgs e) => Navigate("chat", "AI Chat", "Ask about code, debug errors, and plan changes.");
     private void ProjectNav_Click(object s, RoutedEventArgs e) => Navigate("project", "Project", "Browse files in your workspace.");
     private void TerminalNav_Click(object s, RoutedEventArgs e) => Navigate("terminal", "Terminal", "Run a limited set of developer commands.");
-    private void SettingsNav_Click(object s, RoutedEventArgs e) { ApiKeyBox.Password = apiKey; ModelCombo.SelectedIndex = model.Contains("pro") ? 1 : 0; Navigate("settings", "Settings", "Configure your AI provider."); }
+    private void SettingsNav_Click(object s, RoutedEventArgs e) { ApiKeyBox.Password = apiKey; ProviderCombo.SelectedIndex = provider switch { "OpenAI" => 1, "OpenRouter" => 2, _ => 0 }; ModelBox.Text = model; Navigate("settings", "Settings", "Configure your AI provider."); }
+    private void ProviderCombo_SelectionChanged(object s, SelectionChangedEventArgs e)
+    {
+        if (ModelBox is null || ProviderCombo.SelectedItem is not ComboBoxItem item) return;
+        var selected = item.Content?.ToString() ?? "Gemini";
+        if (provider == selected) return;
+        ModelBox.Text = selected switch { "OpenAI" => "gpt-4.1-mini", "OpenRouter" => "openai/gpt-4.1-mini", _ => "gemini-2.5-flash" };
+    }
 
     private string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KlewiDesktop", "settings.json");
     private void LoadSettings()
@@ -43,21 +51,21 @@ public partial class MainWindow : Window
             using var doc = JsonDocument.Parse(File.ReadAllText(SettingsPath));
             var enc = doc.RootElement.GetProperty("key").GetString();
             if (!string.IsNullOrEmpty(enc)) apiKey = Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(enc), null, DataProtectionScope.CurrentUser));
-            if (doc.RootElement.TryGetProperty("model", out var m)) model = m.GetString() ?? model;
+            if (doc.RootElement.TryGetProperty("model", out var m)) model = m.GetString() ?? model;\n            if (doc.RootElement.TryGetProperty("provider", out var p)) provider = p.GetString() ?? provider;
         } catch { apiKey = ""; }
     }
     private void SaveSettings_Click(object s, RoutedEventArgs e)
     {
         try {
-            apiKey = ApiKeyBox.Password.Trim(); model = (ModelCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "gemini-2.5-flash";
+            apiKey = ApiKeyBox.Password.Trim(); provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Gemini"; model = ModelBox.Text.Trim();\n            if (model.Length == 0) { SettingsStatus.Text = "Enter a model ID."; return; }
             if (apiKey.Length == 0) { SettingsStatus.Text = "Enter an API key first."; return; }
             Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
             var enc = Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(apiKey), null, DataProtectionScope.CurrentUser));
-            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(new { key = enc, model }));
+            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(new { key = enc, model, provider }));
             SettingsStatus.Text = "Saved securely for this Windows account."; UpdateStatus();
         } catch (Exception ex) { SettingsStatus.Text = "Save failed: " + ex.Message; }
     }
-    private void UpdateStatus() => ProviderStatus.Text = string.IsNullOrWhiteSpace(apiKey) ? "● Provider not configured" : "● Gemini • " + model;
+    private void UpdateStatus() => ProviderStatus.Text = string.IsNullOrWhiteSpace(apiKey) ? "● Provider not configured" : "● " + provider + " • " + model;
 
     private async void TestConnection_Click(object s, RoutedEventArgs e)
     {
@@ -65,18 +73,67 @@ public partial class MainWindow : Window
         model = (ModelCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? model;
         if (apiKey.Length == 0) { SettingsStatus.Text = "Enter an API key first."; return; }
         SettingsStatus.Text = "Testing connection…";
-        try { SettingsStatus.Text = "Connected: " + await AskGemini("Reply exactly: Klewi connection works."); }
+        try { SettingsStatus.Text = "Connected: " + (await AskProvider("Reply exactly: Klewi connection works.")).Trim(); }
         catch (Exception ex) { SettingsStatus.Text = "Connection failed: " + ex.Message; }
     }
-    private async Task<string> AskGemini(string prompt)
+    private async Task<string> AskProvider(string prompt)
     {
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(model)}:generateContent?key={Uri.EscapeDataString(apiKey)}";
-        var payload = new { contents = new[] { new { role = "user", parts = new[] { new { text = prompt } } } }, generationConfig = new { temperature = 0.3, maxOutputTokens = 2048 } };
-        using var response = await Http.PostAsync(url, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
-        var body = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"Gemini HTTP {(int)response.StatusCode}: {(body.Length > 600 ? body[..600] : body)}");
-        using var doc = JsonDocument.Parse(body);
-        return doc.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString() ?? "(Empty response)";
+        if (provider == "Gemini")
+        {
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(model)}:generateContent?key={Uri.EscapeDataString(apiKey)}";
+            var payload = new { contents = new[] { new { role = "user", parts = new[] { new { text = prompt } } } }, generationConfig = new { temperature = 0.3, maxOutputTokens = 4096 } };
+            using var response = await Http.PostAsync(url, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+            var body = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"Gemini HTTP {(int)response.StatusCode}: {(body.Length > 600 ? body[..600] : body)}");
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString() ?? "(Empty response)";
+        }
+
+        var endpoint = provider == "OpenRouter" ? "https://openrouter.ai/api/v1/chat/completions" : "https://api.openai.com/v1/chat/completions";
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+        if (provider == "OpenRouter")
+        {
+            request.Headers.TryAddWithoutValidation("HTTP-Referer", "https://github.com/veniaminminaj-tech/Klewi-desktop");
+            request.Headers.TryAddWithoutValidation("X-Title", "Klewi Desktop");
+        }
+        request.Content = new StringContent(JsonSerializer.Serialize(new {
+            model,
+            messages = new[] { new { role = "system", content = "You are Klewi, a helpful coding assistant. Be honest about actions: you cannot access or modify local files unless a tool explicitly provides them. Explain changes clearly." }, new { role = "user", content = prompt } },
+            temperature = 0.3,
+            max_tokens = 4096
+        }), Encoding.UTF8, "application/json");
+        using var compatibleResponse = await Http.SendAsync(request);
+        var compatibleBody = await compatibleResponse.Content.ReadAsStringAsync();
+        if (!compatibleResponse.IsSuccessStatusCode) throw new InvalidOperationException($"{provider} HTTP {(int)compatibleResponse.StatusCode}: {(compatibleBody.Length > 600 ? compatibleBody[..600] : compatibleBody)}");
+        using var compatibleDoc = JsonDocument.Parse(compatibleBody);
+        return compatibleDoc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString() ?? "(Empty response)";
+    }
+
+    private async void LoadModels_Click(object s, RoutedEventArgs e)
+    {
+        if ((ProviderCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() != "OpenRouter")
+        { SettingsStatus.Text = "Select OpenRouter to load its public model catalog."; return; }
+        SettingsStatus.Text = "Loading model catalog…";
+        try
+        {
+            using var response = await Http.GetAsync("https://openrouter.ai/api/v1/models");
+            response.EnsureSuccessStatusCode();
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var names = doc.RootElement.GetProperty("data").EnumerateArray()
+                .Select(x => x.TryGetProperty("id", out var id) ? id.GetString() : null)
+                .Where(x => !string.IsNullOrWhiteSpace(x)).Take(500).ToList();
+            var picker = new Window { Title = "OpenRouter models", Width = 520, Height = 620, Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = (Brush)FindResource("Panel") };
+            var panel = new DockPanel { Margin = new Thickness(12) };
+            var search = new TextBox { Margin = new Thickness(0,0,0,10), ToolTip = "Filter model IDs" };
+            DockPanel.SetDock(search, Dock.Top); panel.Children.Add(search);
+            var list = new ListBox { ItemsSource = names, Background = Brushes.Transparent, Foreground = Brushes.White };
+            list.MouseDoubleClick += (_, _) => { if (list.SelectedItem is string chosen) { ModelBox.Text = chosen; picker.DialogResult = true; picker.Close(); } };
+            panel.Children.Add(list); picker.Content = panel;
+            search.TextChanged += (_, _) => list.ItemsSource = names.Where(n => n!.Contains(search.Text, StringComparison.OrdinalIgnoreCase)).ToList();
+            picker.ShowDialog(); SettingsStatus.Text = "Choose a model and save settings.";
+        }
+        catch (Exception ex) { SettingsStatus.Text = "Could not load model catalog: " + ex.Message; }
     }
     private TextBlock AddMessage(string who, string text)
     {
@@ -92,7 +149,7 @@ public partial class MainWindow : Window
         var prompt = ChatInput.Text.Trim(); if (prompt.Length == 0 || busy) return;
         if (apiKey.Length == 0) { AddMessage("Klewi", "Open Settings and configure a Gemini API key first."); return; }
         ChatInput.Clear(); AddMessage("You", prompt); var pending = AddMessage("Klewi", "Thinking…"); busy = true;
-        try { pending.Text = await AskGemini(prompt + (projectPath is null ? "" : $"\nWorkspace: {projectPath}. Do not claim to have read files.")); }
+        try { pending.Text = await AskProvider(prompt + (projectPath is null ? "" : $"\nWorkspace: {projectPath}. Do not claim to have read files.")); }
         catch (Exception ex) { pending.Text = "Request failed: " + ex.Message; }
         finally { busy = false; ChatScroll.ScrollToEnd(); }
     }
