@@ -16,6 +16,8 @@ public partial class MainWindow : Window
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
     private string? projectPath;
+    private string? selectedFilePath;
+    private string pendingFileContext = "";
     private string apiKey = "";
     private string model = "gemini-2.5-flash";
     private string provider = "Gemini";
@@ -155,9 +157,11 @@ public partial class MainWindow : Window
     private async Task SendMessage()
     {
         var prompt = ChatInput.Text.Trim(); if (prompt.Length == 0 || busy) return;
-        if (apiKey.Length == 0) { AddMessage("Klewi", "Open Settings and configure a Gemini API key first."); return; }
+        if (apiKey.Length == 0) { AddMessage("Klewi", "Open Settings and configure an AI provider first."); return; }
         ChatInput.Clear(); AddMessage("You", prompt); var pending = AddMessage("Klewi", "Thinking…"); busy = true;
-        try { pending.Text = await AskProvider(prompt + (projectPath is null ? "" : $"\nWorkspace: {projectPath}. Do not claim to have read files.")); }
+        var attachedContext = pendingFileContext;
+        pendingFileContext = "";
+        try { pending.Text = await AskProvider(prompt + (attachedContext.Length == 0 ? "" : "\n\nUser-selected project file:\n" + attachedContext) + (projectPath is null ? "" : $"\nWorkspace folder: {projectPath}. Only the attached file content is available; do not claim to have read other files.")); }
         catch (Exception ex) { pending.Text = "Request failed: " + ex.Message; }
         finally { busy = false; ChatScroll.ScrollToEnd(); }
     }
@@ -167,17 +171,109 @@ public partial class MainWindow : Window
         var dialog = new OpenFolderDialog { Title = "Choose project folder" };
         if (dialog.ShowDialog() != true) return;
         projectPath = dialog.FolderName; ProjectPathText.Text = projectPath; ProjectTree.Items.Clear();
-        var root = new TreeViewItem { Header = Path.GetFileName(projectPath), IsExpanded = true }; ProjectTree.Items.Add(root);
+        selectedFilePath = null; FilePreview.Clear(); FilePreviewStatus.Text = "Select a text file to preview it.";
+        var root = new TreeViewItem { Header = Path.GetFileName(projectPath), Tag = projectPath, IsExpanded = true }; ProjectTree.Items.Add(root);
         try { FillTree(root, projectPath, 0); } catch (Exception ex) { MessageBox.Show(ex.Message, "Klewi"); }
     }
     private static void FillTree(TreeViewItem node, string path, int depth)
     {
         if (depth >= 3) return;
-        foreach (var dir in Directory.EnumerateDirectories(path).Where(x => !Path.GetFileName(x).StartsWith('.')).Take(60)) {
+        foreach (var dir in Directory.EnumerateDirectories(path).Where(x => !Path.GetFileName(x).StartsWith('.') && !new[] { "bin", "obj", "node_modules", ".git", ".vs" }.Contains(Path.GetFileName(x), StringComparer.OrdinalIgnoreCase)).Take(60)) {
             var child = new TreeViewItem { Header = "📁 " + Path.GetFileName(dir) }; node.Items.Add(child);
             try { FillTree(child, dir, depth + 1); } catch { }
         }
-        foreach (var file in Directory.EnumerateFiles(path).Take(100)) node.Items.Add(new TreeViewItem { Header = "📄 " + Path.GetFileName(file) });
+        foreach (var file in Directory.EnumerateFiles(path).Take(100)) node.Items.Add(new TreeViewItem { Header = "📄 " + Path.GetFileName(file), Tag = file });
+    }
+
+    private static readonly HashSet<string> PreviewExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".cs", ".xaml", ".json", ".xml", ".md", ".txt", ".py", ".js", ".ts", ".html", ".css",
+        ".cpp", ".c", ".h", ".hpp", ".asm", ".ps1", ".yml", ".yaml", ".toml", ".ini", ".java",
+        ".gradle", ".properties", ".sql", ".sh", ".bat", ".cmd", ".sln", ".csproj", ".props", ".targets"
+    };
+
+    private static bool IsSensitiveProjectFile(string path)
+    {
+        var lower = Path.GetFileName(path).ToLowerInvariant();
+        return lower == ".env" || lower.StartsWith(".env.") ||
+            lower.Contains("secret") || lower.Contains("credential") ||
+            lower.Contains("password") || lower.Contains("token") ||
+            lower.Contains("private_key") || lower == "id_rsa" || lower == "id_ed25519" ||
+            lower.EndsWith(".pem") || lower.EndsWith(".pfx") || lower.EndsWith(".p12");
+    }
+
+    private void ProjectTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        selectedFilePath = null;
+        FilePreview.Clear();
+        if (ProjectTree.SelectedItem is not TreeViewItem item || item.Tag is not string path || !File.Exists(path))
+        {
+            FilePreviewStatus.Text = "Select a text file to preview it.";
+            return;
+        }
+        selectedFilePath = path;
+        if (IsSensitiveProjectFile(path))
+        {
+            FilePreviewStatus.Text = "Preview blocked: this filename may contain credentials or secrets.";
+            selectedFilePath = null;
+            return;
+        }
+        if (!PreviewExtensions.Contains(Path.GetExtension(path)))
+        {
+            FilePreviewStatus.Text = "Preview supports source code and text files only.";
+            selectedFilePath = null;
+            return;
+        }
+        try
+        {
+            var info = new FileInfo(path);
+            if (info.Length > 100 * 1024)
+            {
+                FilePreviewStatus.Text = "File is larger than the 100 KB preview limit.";
+                selectedFilePath = null;
+                return;
+            }
+            FilePreview.Text = File.ReadAllText(path);
+            FilePreviewStatus.Text = $"{Path.GetFileName(path)} • {info.Length:N0} bytes";
+        }
+        catch (Exception ex)
+        {
+            FilePreviewStatus.Text = "Could not read file: " + ex.Message;
+            selectedFilePath = null;
+        }
+    }
+
+    private void UseFileInChat_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(selectedFilePath) || projectPath is null)
+        {
+            MessageBox.Show("Select a supported text file first.", "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        try
+        {
+            if (IsSensitiveProjectFile(selectedFilePath))
+            {
+                MessageBox.Show("This file may contain secrets and cannot be attached.", "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            var info = new FileInfo(selectedFilePath);
+            if (info.Length > 100 * 1024)
+            {
+                MessageBox.Show("Files larger than 100 KB cannot be attached yet.", "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var relative = Path.GetRelativePath(projectPath, selectedFilePath);
+            var contents = File.ReadAllText(selectedFilePath);
+            pendingFileContext = $"File: {relative}{Environment.NewLine}{contents}";
+            Navigate("chat", "AI Chat", "Ask Klewi about the selected project file.");
+            AddMessage("Klewi", $"Attached {relative} as context for your next message. It will be sent to your selected AI provider.");
+            ChatInput.Focus();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Could not attach file: " + ex.Message, "Klewi Desktop", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private async void RunTerminal_Click(object s, RoutedEventArgs e) => await RunCommand();
