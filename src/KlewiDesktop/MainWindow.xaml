@@ -9,7 +9,7 @@
    <DockPanel>
     <StackPanel DockPanel.Dock="Top">
      <StackPanel Orientation="Horizontal" Margin="0,8,0,28">
-      <Border Background="{StaticResource Accent}" CornerRadius="9" Width="38" Height="38"><TextBlock Text="K" FontSize="23" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+      <Border Background="#0C121A" BorderBrush="#34445B" BorderThickness="1" CornerRadius="9" Width="38" Height="38" Padding="7"><Grid><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="4"/></Grid.RowDefinitions><Grid Grid.Row="0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Border Width="7" Height="7" Background="#65F05A" HorizontalAlignment="Center" VerticalAlignment="Center"/><Border Grid.Column="1" Width="7" Height="7" Background="#65F05A" HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid><Border Grid.Row="1" Width="13" Height="2" Background="#65F05A" HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid></Border>
       <StackPanel Margin="10,0"><TextBlock Text="Klewi" FontSize="21" FontWeight="Bold"/><TextBlock Text="DESKTOP PREVIEW" FontSize="9" Foreground="{StaticResource Muted}"/></StackPanel>
      </StackPanel>
      <TextBlock Text="WORKSPACE" Foreground="{StaticResource Muted}" FontSize="10" Margin="5,0,0,8"/>
@@ -48,7 +48,10 @@
     <Grid x:Name="ProjectPage" Visibility="Collapsed">
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <DockPanel Margin="0,0,0,12"><TextBlock x:Name="ProjectPathText" Text="No folder selected" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/><Button DockPanel.Dock="Right" Content="Open folder…" Background="{StaticResource Accent}" Click="OpenProject_Click"/></DockPanel>
-     <Border Grid.Row="1" Background="{StaticResource Panel}" CornerRadius="12" Padding="12"><TreeView x:Name="ProjectTree" Background="Transparent" Foreground="{StaticResource MainText}" BorderThickness="0"/></Border>
+     <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="300"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Border Grid.Column="0" Background="{StaticResource Panel}" CornerRadius="12" Padding="12"><TreeView x:Name="ProjectTree" SelectedItemChanged="ProjectTree_SelectedItemChanged" Background="Transparent" Foreground="{StaticResource MainText}" BorderThickness="0"/></Border>
+      <Border Grid.Column="2" Background="{StaticResource Panel}" CornerRadius="12" Padding="14"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><TextBlock x:Name="FilePreviewStatus" Text="Select a text file to preview it." Foreground="{StaticResource Muted}" Margin="0,0,0,10"/><TextBox x:Name="FilePreview" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Background="#0B1018" BorderThickness="0"/><Button Grid.Row="2" Content="Use selected file in AI chat" HorizontalAlignment="Right" Background="{StaticResource Accent}" Margin="0,10,0,0" Click="UseFileInChat_Click"/></Grid></Border>
+     </Grid>
     </Grid>
     <Grid x:Name="TerminalPage" Visibility="Collapsed">
      <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
