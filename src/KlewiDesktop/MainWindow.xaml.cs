@@ -51,13 +51,15 @@ public partial class MainWindow : Window
             using var doc = JsonDocument.Parse(File.ReadAllText(SettingsPath));
             var enc = doc.RootElement.GetProperty("key").GetString();
             if (!string.IsNullOrEmpty(enc)) apiKey = Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(enc), null, DataProtectionScope.CurrentUser));
-            if (doc.RootElement.TryGetProperty("model", out var m)) model = m.GetString() ?? model;\n            if (doc.RootElement.TryGetProperty("provider", out var p)) provider = p.GetString() ?? provider;
+            if (doc.RootElement.TryGetProperty("model", out var m)) model = m.GetString() ?? model;
+            if (doc.RootElement.TryGetProperty("provider", out var p)) provider = p.GetString() ?? provider;
         } catch { apiKey = ""; }
     }
     private void SaveSettings_Click(object s, RoutedEventArgs e)
     {
         try {
-            apiKey = ApiKeyBox.Password.Trim(); provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Gemini"; model = ModelBox.Text.Trim();\n            if (model.Length == 0) { SettingsStatus.Text = "Enter a model ID."; return; }
+            apiKey = ApiKeyBox.Password.Trim(); provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Gemini"; model = ModelBox.Text.Trim();
+            if (model.Length == 0) { SettingsStatus.Text = "Enter a model ID."; return; }
             if (apiKey.Length == 0) { SettingsStatus.Text = "Enter an API key first."; return; }
             Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
             var enc = Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(apiKey), null, DataProtectionScope.CurrentUser));
@@ -70,7 +72,8 @@ public partial class MainWindow : Window
     private async void TestConnection_Click(object s, RoutedEventArgs e)
     {
         if (ApiKeyBox.Password.Length > 0) apiKey = ApiKeyBox.Password.Trim();
-        model = (ModelCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? model;
+        provider = (ProviderCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? provider;
+        model = ModelBox.Text.Trim();
         if (apiKey.Length == 0) { SettingsStatus.Text = "Enter an API key first."; return; }
         SettingsStatus.Text = "Testing connection…";
         try { SettingsStatus.Text = "Connected: " + (await AskProvider("Reply exactly: Klewi connection works.")).Trim(); }
