@@ -48,10 +48,18 @@
     </Grid>
     <Grid x:Name="ProjectPage" Visibility="Collapsed">
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-     <DockPanel Margin="0,0,0,12"><TextBlock x:Name="ProjectPathText" Text="No folder selected" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/><Button DockPanel.Dock="Right" Content="Open folder…" Background="{StaticResource Accent}" Click="OpenProject_Click"/></DockPanel>
+     <DockPanel Margin="0,0,0,12">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+       <Button Content="New file" Click="CreateProjectFile_Click"/>
+       <Button Content="Save file" Background="{StaticResource Accent}" Click="SaveSelectedFile_Click"/>
+       <Button Content="AI edit" Click="AskAIEdit_Click"/>
+       <Button Content="Open folder…" Click="OpenProject_Click"/>
+      </StackPanel>
+      <TextBlock x:Name="ProjectPathText" Text="No folder selected" Foreground="{StaticResource Muted}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+     </DockPanel>
      <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="300"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Border Grid.Column="0" Background="{StaticResource Panel}" CornerRadius="12" Padding="12"><TreeView x:Name="ProjectTree" SelectedItemChanged="ProjectTree_SelectedItemChanged" Background="Transparent" Foreground="{StaticResource MainText}" BorderThickness="0"/></Border>
-      <Border Grid.Column="2" Background="{StaticResource Panel}" CornerRadius="12" Padding="14"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><TextBlock x:Name="FilePreviewStatus" Text="Select a text file to preview it." Foreground="{StaticResource Muted}" Margin="0,0,0,10"/><TextBox x:Name="FilePreview" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Background="#0B1018" BorderThickness="0"/><Button Grid.Row="2" Content="Use selected file in AI chat" HorizontalAlignment="Right" Background="{StaticResource Accent}" Margin="0,10,0,0" Click="UseFileInChat_Click"/></Grid></Border>
+      <Border Grid.Column="2" Background="{StaticResource Panel}" CornerRadius="12" Padding="14"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><TextBlock x:Name="FilePreviewStatus" Text="Select a text file. You can edit it here, save it, or ask AI to rewrite it." Foreground="{StaticResource Muted}" Margin="0,0,0,10"/><TextBox x:Name="FilePreview" Grid.Row="1" IsReadOnly="False" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Background="#0B1018" BorderThickness="0" AcceptsTab="True"/><Button Grid.Row="2" Content="Attach current editor contents to AI chat" HorizontalAlignment="Right" Background="{StaticResource Accent}" Margin="0,10,0,0" Click="UseFileInChat_Click"/></Grid></Border>
      </Grid>
     </Grid>
     <Grid x:Name="MinecraftPage" Visibility="Collapsed">
@@ -76,9 +84,14 @@
         <DockPanel Margin="0,5,0,12"><TextBox x:Name="MinecraftOutputPathBox" IsReadOnly="True" Padding="8" Text="Documents\\KlewiMinecraft"/><Button DockPanel.Dock="Right" Content="Browse…" Click="ChooseMinecraftOutput_Click"/></DockPanel>
         <TextBlock Text="Describe your idea" Foreground="{StaticResource Muted}"/>
         <TextBox x:Name="MinecraftIdeaBox" MinHeight="110" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Padding="9" Text="Create a new item with a custom texture and crafting recipe."/>
-        <Button x:Name="GenerateMinecraftButton" Content="Generate project + ZIP  ✦" Background="{StaticResource Accent}" HorizontalAlignment="Left" Padding="18,10" Margin="0,14,0,0" Click="GenerateMinecraft_Click"/>
+        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+         <Button x:Name="GenerateMinecraftButton" Content="Generate project + ZIP  ✦" Background="{StaticResource Accent}" Padding="18,10" Click="GenerateMinecraft_Click"/>
+         <Button x:Name="BuildMinecraftButton" Content="Build mod .jar" Padding="18,10" Click="BuildMinecraftJar_Click"/>
+        </StackPanel>
         <TextBlock x:Name="MinecraftStatusText" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
-        <TextBlock Text="Generated files are written to the selected folder and packaged into a ZIP. Review generated source code before building or installing it. Mod compilation is not automatic yet." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+        <Image x:Name="MinecraftTexturePreview" Width="160" Height="160" Stretch="Uniform" HorizontalAlignment="Left" Visibility="Collapsed" Margin="0,12,0,0"/>
+        <TextBox x:Name="MinecraftBuildOutput" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Height="130" Background="#0B1018" Foreground="#C7D5E8" FontFamily="Consolas" FontSize="11" Margin="0,12,0,0"/>
+        <TextBlock Text="Before building a mod, inspect the generated Gradle files. Build runs only after your confirmation because Gradle build scripts execute code." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
        </StackPanel>
       </Border>
       <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="16"><StackPanel><TextBlock Text="Supported output" FontWeight="SemiBold"/><TextBlock Text="Mods: Java source, registries, items, blocks, recipes, metadata and build files. Resource packs: pack.mcmeta, model JSON and asset paths. Textures: real 16×16 or 32×32 PNG files generated from an AI-provided pixel grid." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,7,0,0"/></StackPanel></Border>
