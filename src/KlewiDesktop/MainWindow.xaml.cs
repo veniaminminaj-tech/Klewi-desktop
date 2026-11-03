@@ -36,8 +36,24 @@ public partial class MainWindow : Window
     private string? mountedIsoDrive;
     private string loadedFileContents = "";
     private bool busy;
+    private MascotWindow? mascot;
 
-    public MainWindow() { InitializeComponent(); LoadSettings(); UpdateStatus(); }
+    public MainWindow()
+    {
+        InitializeComponent();
+        LoadSettings();
+        UpdateStatus();
+        mascot = new MascotWindow(OpenMainFromMascot);
+        mascot.Show();
+        Closed += (_, _) => mascot?.Close();
+    }
+
+    private void OpenMainFromMascot()
+    {
+        if (!IsVisible) Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+    }
 
     private void Navigate(string page, string title, string subtitle)
     {
