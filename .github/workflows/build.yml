@@ -23,9 +23,9 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup --yes --no-progress
       - name: Build Minecraft Studio installer
-        run: '& "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" /DSourceDir="$pwd\artifacts\KlewiDesktop" installers\KlewiMinecraftStudio.iss'
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DSourceDir="$pwd\artifacts\KlewiDesktop" installers\KlewiMinecraftStudio.iss'
       - name: Build ISO Tools installer
-        run: '& "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" /DSourceDir="$pwd\artifacts\KlewiDesktop" installers\KlewiIsoTools.iss'
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DSourceDir="$pwd\artifacts\KlewiDesktop" installers\KlewiIsoTools.iss'
       - name: Upload Windows apps and installers
         uses: actions/upload-artifact@v4
         with:
