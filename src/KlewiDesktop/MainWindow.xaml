@@ -13,13 +13,13 @@
       <StackPanel Margin="10,0"><TextBlock Text="Klewi" FontSize="21" FontWeight="Bold"/><TextBlock Text="DESKTOP PREVIEW" FontSize="9" Foreground="{StaticResource Muted}"/></StackPanel>
      </StackPanel>
      <TextBlock Text="WORKSPACE" Foreground="{StaticResource Muted}" FontSize="10" Margin="5,0,0,8"/>
-     <Button Content="✦  AI Chat" HorizontalContentAlignment="Left" Click="ChatNav_Click"/>
-     <Button Content="⌘  Code Assistant" HorizontalContentAlignment="Left" Click="ChatNav_Click"/>
-     <Button Content="▣  Project" HorizontalContentAlignment="Left" Click="ProjectNav_Click"/>
-     <Button Content="⬡  Minecraft Studio" HorizontalContentAlignment="Left" Click="MinecraftNav_Click"/>
-     <Button Content="▤  ISO Tools" HorizontalContentAlignment="Left" Click="IsoNav_Click"/>
-     <Button Content="⌘  Terminal" HorizontalContentAlignment="Left" Click="TerminalNav_Click"/>
-     <Button Content="⚙  Settings" HorizontalContentAlignment="Left" Click="SettingsNav_Click"/>
+     <Button x:Name="ChatNavButton" Content="✦  AI Chat" HorizontalContentAlignment="Left" Click="ChatNav_Click"/>
+     <Button x:Name="CodeNavButton" Content="⌘  Code Assistant" HorizontalContentAlignment="Left" Click="ChatNav_Click"/>
+     <Button x:Name="ProjectNavButton" Content="▣  Project" HorizontalContentAlignment="Left" Click="ProjectNav_Click"/>
+     <Button x:Name="MinecraftNavButton" Content="⬡  Minecraft Studio" HorizontalContentAlignment="Left" Click="MinecraftNav_Click"/>
+     <Button x:Name="IsoNavButton" Content="▤  ISO Tools" HorizontalContentAlignment="Left" Click="IsoNav_Click"/>
+     <Button x:Name="TerminalNavButton" Content="⌘  Terminal" HorizontalContentAlignment="Left" Click="TerminalNav_Click"/>
+     <Button x:Name="SettingsNavButton" Content="⚙  Settings" HorizontalContentAlignment="Left" Click="SettingsNav_Click"/>
     </StackPanel>
     <Border DockPanel.Dock="Bottom" Background="#1B2637" CornerRadius="9" Padding="10">
      <StackPanel><TextBlock Text="Klewi Agent" FontWeight="SemiBold"/><TextBlock Text="Prototype build" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4"/><TextBlock Text="Connect an AI provider in Settings to chat." Foreground="{StaticResource Muted}" FontSize="10" TextWrapping="Wrap"/></StackPanel>
