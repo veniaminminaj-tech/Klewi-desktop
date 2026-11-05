@@ -1,4 +1,4 @@
-name: Build Klewi Desktop
+name: Build Klewi Desktop and Modules
 on:
   push:
     branches: [ main ]
@@ -20,9 +20,17 @@ jobs:
         run: dotnet build src/KlewiDesktop/KlewiDesktop.csproj --configuration Release --no-restore
       - name: Publish self-contained Windows app
         run: dotnet publish src/KlewiDesktop/KlewiDesktop.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output artifacts/KlewiDesktop
-      - name: Upload build artifact
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+      - name: Build Minecraft Studio installer
+        run: '& "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" /DSourceDir="$pwd\artifacts\KlewiDesktop" installers\KlewiMinecraftStudio.iss'
+      - name: Build ISO Tools installer
+        run: '& "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" /DSourceDir="$pwd\artifacts\KlewiDesktop" installers\KlewiIsoTools.iss'
+      - name: Upload Windows apps and installers
         uses: actions/upload-artifact@v4
         with:
-          name: KlewiDesktop-win-x64
-          path: artifacts/KlewiDesktop/
+          name: Klewi-Windows-Installers
+          path: |
+            artifacts/KlewiDesktop/
+            artifacts/installers/*.exe
           if-no-files-found: error
