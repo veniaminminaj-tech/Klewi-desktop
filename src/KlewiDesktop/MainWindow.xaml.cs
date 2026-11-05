@@ -43,9 +43,39 @@ public partial class MainWindow : Window
         InitializeComponent();
         LoadSettings();
         UpdateStatus();
-        mascot = new MascotWindow(OpenMainFromMascot);
-        mascot.Show();
-        Closed += (_, _) => mascot?.Close();
+
+        var moduleArg = Environment.GetCommandLineArgs()
+            .FirstOrDefault(arg => arg.StartsWith("--module=", StringComparison.OrdinalIgnoreCase));
+        var module = moduleArg?.Split('=', 2).LastOrDefault()?.Trim().ToLowerInvariant();
+
+        if (module == "minecraft")
+        {
+            Title = "Klewi Minecraft Studio";
+            ChatNavButton.Visibility = Visibility.Collapsed;
+            CodeNavButton.Visibility = Visibility.Collapsed;
+            ProjectNavButton.Visibility = Visibility.Collapsed;
+            IsoNavButton.Visibility = Visibility.Collapsed;
+            TerminalNavButton.Visibility = Visibility.Collapsed;
+            Navigate("minecraft", "Minecraft Studio", "Standalone Minecraft mod and resource-pack workspace.");
+        }
+        else if (module == "iso")
+        {
+            Title = "Klewi ISO Tools";
+            ChatNavButton.Visibility = Visibility.Collapsed;
+            CodeNavButton.Visibility = Visibility.Collapsed;
+            ProjectNavButton.Visibility = Visibility.Collapsed;
+            MinecraftNavButton.Visibility = Visibility.Collapsed;
+            TerminalNavButton.Visibility = Visibility.Collapsed;
+            SettingsNavButton.Visibility = Visibility.Collapsed;
+            Navigate("iso", "ISO Tools", "Standalone Windows ISO inspection and mounting tools.");
+        }
+
+        if (module is not ("minecraft" or "iso"))
+        {
+            mascot = new MascotWindow(OpenMainFromMascot);
+            mascot.Show();
+            Closed += (_, _) => mascot?.Close();
+        }
     }
 
     private void OpenMainFromMascot()
