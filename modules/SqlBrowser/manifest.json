@@ -1,0 +1,16 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.sql-browser",
+  "name": "SQL Browser",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "sql-browser"
+  },
+  "permissions": [
+    "filesystem.read"
+  ],
+  "description": "Explore local SQLite database schemas and query notes."
+}
