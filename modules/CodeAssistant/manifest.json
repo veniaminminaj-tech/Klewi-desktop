@@ -1,0 +1,17 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.code-assistant",
+  "name": "Code Assistant",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "code-assistant"
+  },
+  "permissions": [
+    "filesystem.read",
+    "network.ai-provider"
+  ],
+  "description": "AI-assisted code explanations, snippets and project guidance."
+}
