@@ -1,0 +1,18 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.image-lab",
+  "name": "Image Lab",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "image-lab"
+  },
+  "permissions": [
+    "filesystem.read",
+    "filesystem.write",
+    "network.ai-provider"
+  ],
+  "description": "Prepare image-generation prompts and organize generated assets."
+}
