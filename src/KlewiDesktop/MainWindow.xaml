@@ -16,8 +16,6 @@
      <Button x:Name="ChatNavButton" Content="✦  AI Chat" HorizontalContentAlignment="Left" Click="ChatNav_Click"/>
      <Button x:Name="CodeNavButton" Content="⌘  Code Assistant" HorizontalContentAlignment="Left" Click="ChatNav_Click"/>
      <Button x:Name="ProjectNavButton" Content="▣  Project" HorizontalContentAlignment="Left" Click="ProjectNav_Click"/>
-     <Button x:Name="MinecraftNavButton" Content="⬡  Minecraft Studio" HorizontalContentAlignment="Left" Click="MinecraftNav_Click"/>
-     <Button x:Name="IsoNavButton" Content="▤  ISO Tools" HorizontalContentAlignment="Left" Click="IsoNav_Click"/>
      <Button x:Name="TerminalNavButton" Content="⌘  Terminal" HorizontalContentAlignment="Left" Click="TerminalNav_Click"/>
      <Button x:Name="SettingsNavButton" Content="⚙  Settings" HorizontalContentAlignment="Left" Click="SettingsNav_Click"/>
     </StackPanel>
