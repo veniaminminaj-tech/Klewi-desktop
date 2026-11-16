@@ -1,0 +1,16 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.regex-lab",
+  "name": "Regex Lab",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "regex-lab"
+  },
+  "permissions": [
+    "filesystem.read"
+  ],
+  "description": "Test and document regular expressions using sample text."
+}
