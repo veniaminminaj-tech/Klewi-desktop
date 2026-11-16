@@ -1,0 +1,18 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.minecraft-studio",
+  "name": "Minecraft Studio",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "builtin",
+    "id": "minecraft-studio"
+  },
+  "permissions": [
+    "filesystem.read",
+    "filesystem.write",
+    "network.ai-provider"
+  ],
+  "description": "Minecraft Java mod, resource-pack and texture project tools."
+}
