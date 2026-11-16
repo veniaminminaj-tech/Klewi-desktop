@@ -1,6 +1,6 @@
 # Klewi Desktop
 
-Windows desktop prototype built with C# WPF and .NET 10.
+Klewi Code for Windows, built with C# WPF and .NET 10. The single setup installer includes AI coding features and the KCMODULE package manager.
 
 ## Features
 - Dark UI with blue accents and a Klewi mascot with glowing green square eyes
@@ -39,3 +39,12 @@ Klewi can discuss and generate code across a broad range of languages. The chat 
 Klewi extensions use the `.kcmodule` package format. A package is a ZIP container with the `.kcmodule` extension and contains a `manifest.json` plus its module payload and documentation. The manifest declares the module ID, display name, version, minimum Klewi version, entry point and permissions. Modules are distributed as packages, not as separate EXE installers.
 
 The first package descriptors are in `modules/MinecraftStudio` and `modules/IsoTools`. The main workspace no longer shows Minecraft Studio or ISO Tools as built-in navigation sections. The current packages establish the format and module metadata; a runtime loader and migration of the existing feature code into independently loadable module assemblies are still pending.
+
+
+## One installer and Module Market
+
+The release workflow creates one `Klewi-Code-Setup.exe` installer for the complete Klewi Code app. AI chat and code assistance are built into the app; provider API keys are configured in Settings.
+
+The **Module Market** page can install validated `.kcmodule` ZIP packages into `%LOCALAPPDATA%\\Klewi\\Modules` and list installed packages. The setup also places bundled starter packages in `%APPDATA%\\Klewi\\ModuleMarket`.
+
+Current limitation: the market supports local package installation and inventory only. It does not yet download from a hosted online catalog or execute third-party module code. The installer is a single app installer, not separate installers for modules.
