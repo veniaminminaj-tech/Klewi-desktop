@@ -13,6 +13,7 @@ public partial class MascotWindow : Window
     private readonly DispatcherTimer speechTimer;
     private readonly Random random = new();
     private readonly Action openMain;
+    private readonly KlewiCursorWindow klewiCursor;
     private double velocityX = 1.15;
     private double velocityY = 0.0;
     private bool dragging;
@@ -34,6 +35,8 @@ public partial class MascotWindow : Window
     {
         InitializeComponent();
         this.openMain = openMain;
+        klewiCursor = new KlewiCursorWindow();
+        klewiCursor.Show();
         Left = SystemParameters.WorkArea.Right - 165;
         Top = SystemParameters.WorkArea.Bottom - 220;
 
@@ -49,7 +52,7 @@ public partial class MascotWindow : Window
         speechTimer.Start();
 
         Loaded += (_, _) => Say("Привіт! Я Клеві.");
-        Closed += (_, _) => { movementTimer.Stop(); speechTimer.Stop(); };
+        Closed += (_, _) => { movementTimer.Stop(); speechTimer.Stop(); klewiCursor.Close(); };
     }
 
     public void Say(string message)
