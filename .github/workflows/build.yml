@@ -1,4 +1,4 @@
-name: Build Klewi Desktop and KCMODULE packages
+name: Build Klewi Code installer and KCMODULE packages
 on:
   push:
     branches: [ main ]
@@ -14,12 +14,14 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
       - name: Restore
         run: dotnet restore src/KlewiDesktop/KlewiDesktop.csproj
       - name: Build
         run: dotnet build src/KlewiDesktop/KlewiDesktop.csproj --configuration Release --no-restore
-      - name: Publish Klewi Desktop
-        run: dotnet publish src/KlewiDesktop/KlewiDesktop.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output artifacts/KlewiDesktop
+      - name: Publish Klewi Code
+        run: dotnet publish src/KlewiDesktop/KlewiDesktop.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output artifacts/KlewiCode
       - name: Package KCMODULE files
         shell: pwsh
         run: |
@@ -28,11 +30,16 @@ jobs:
           Move-Item artifacts/modules/Klewi-MinecraftStudio.zip artifacts/modules/Klewi-MinecraftStudio.kcmodule -Force
           Compress-Archive -Path modules/IsoTools/* -DestinationPath artifacts/modules/Klewi-IsoTools.zip -Force
           Move-Item artifacts/modules/Klewi-IsoTools.zip artifacts/modules/Klewi-IsoTools.kcmodule -Force
-      - name: Upload build artifacts
+      - name: Build single installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { $iscc = "${env:ProgramFiles}\Inno Setup 6\ISCC.exe" }
+          if (!(Test-Path $iscc)) { throw "Inno Setup compiler not found." }
+          & $iscc "/DSourceDir=$pwd\artifacts\KlewiCode" "/DModuleDir=$pwd\artifacts\modules" installers/KlewiCode.iss
+      - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: Klewi-Windows-Build
-          path: |
-            artifacts/KlewiDesktop/
-            artifacts/modules/*.kcmodule
+          name: Klewi-Code-Installer
+          path: artifacts/installer/Klewi-Code-Setup.exe
           if-no-files-found: error
