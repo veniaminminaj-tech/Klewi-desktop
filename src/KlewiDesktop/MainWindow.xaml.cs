@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -34,7 +35,7 @@ public partial class MainWindow : Window
     private string? selectedIsoPath;
     private string? mountedIsoPath;
     private string? mountedIsoDrive;
-    private readonly string modulesDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Klewi", "Modules");
+    private readonly string modulesDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Klewi", "Modules");
     private string loadedFileContents = "";
     private bool busy;
     private MascotWindow? mascot;
@@ -743,7 +744,17 @@ public partial class MainWindow : Window
             var fullPrompt = languageInstruction + "\nFor coding tasks, provide complete usable code and appropriate build/run/test commands. Never claim execution or tests unless performed.\n\n" + prompt
                 + (attachedContext.Length == 0 ? "" : "\n\nUser-selected project file:\n" + attachedContext)
                 + (projectPath is null ? "" : $"\nWorkspace folder: {projectPath}. Only the attached file content is available; do not claim to have read other files.");
-            pending.Text = await AskProvider(fullPrompt);
+            fullPrompt += "\n\nDesktop cursor control: Only when the user explicitly asks you to move Klewi's separate visual pointer AND supplies exact desktop coordinates, append exactly one marker [[KLEWI_CURSOR:x,y]] to your answer, where x and y are integer screen coordinates. Never invent coordinates, never claim to see the screen, and never request or perform clicks or keyboard input. Otherwise do not output a marker.";
+            var answer = await AskProvider(fullPrompt);
+            var cursorCommand = Regex.Match(answer, @"\\[\\[KLEWI_CURSOR:(\\d{1,5}),(\\d{1,5})\\]\\]");
+            if (cursorCommand.Success &&
+                int.TryParse(cursorCommand.Groups[1].Value, out var cursorX) &&
+                int.TryParse(cursorCommand.Groups[2].Value, out var cursorY))
+            {
+                mascot?.MoveCursorTo(cursorX, cursorY);
+                answer = Regex.Replace(answer, @"\\s*\\[\\[KLEWI_CURSOR:\\d{1,5},\\d{1,5}\\]\\]", "").Trim();
+            }
+            pending.Text = answer;
         }
         catch (Exception ex) { pending.Text = "Request failed: " + ex.Message; }
         finally { busy = false; ChatScroll.ScrollToEnd(); }
