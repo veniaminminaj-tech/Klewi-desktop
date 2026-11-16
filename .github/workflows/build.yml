@@ -22,21 +22,31 @@ jobs:
         run: dotnet build src/KlewiDesktop/KlewiDesktop.csproj --configuration Release --no-restore
       - name: Publish Klewi Code
         run: dotnet publish src/KlewiDesktop/KlewiDesktop.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output artifacts/KlewiCode
-      - name: Package KCMODULE files
+      - name: Package all KCMODULE files
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path artifacts/modules | Out-Null
-          Compress-Archive -Path modules/MinecraftStudio/* -DestinationPath artifacts/modules/Klewi-MinecraftStudio.zip -Force
-          Move-Item artifacts/modules/Klewi-MinecraftStudio.zip artifacts/modules/Klewi-MinecraftStudio.kcmodule -Force
-          Compress-Archive -Path modules/IsoTools/* -DestinationPath artifacts/modules/Klewi-IsoTools.zip -Force
-          Move-Item artifacts/modules/Klewi-IsoTools.zip artifacts/modules/Klewi-IsoTools.kcmodule -Force
+          $moduleDirs = Get-ChildItem modules -Directory
+          if ($moduleDirs.Count -ne 25) { throw "Expected exactly 25 KCMODULE modules, found $($moduleDirs.Count)." }
+          foreach ($module in $moduleDirs) {
+            $manifestPath = Join-Path $module.FullName "manifest.json"
+            if (!(Test-Path $manifestPath)) { throw "Missing manifest: $manifestPath" }
+            $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+            if ($manifest.format -ne "kcmodule" -or !$manifest.id -or !$manifest.name -or !$manifest.version) {
+              throw "Invalid KCMODULE manifest: $manifestPath"
+            }
+            $zipPath = Join-Path $env:GITHUB_WORKSPACE "artifacts/modules/$($module.Name).zip"
+            $packagePath = Join-Path $env:GITHUB_WORKSPACE "artifacts/modules/$($module.Name).kcmodule"
+            Compress-Archive -Path (Join-Path $module.FullName "*") -DestinationPath $zipPath -Force
+            Move-Item $zipPath $packagePath -Force
+          }
       - name: Build single installer
         shell: pwsh
         run: |
-          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          if (!(Test-Path $iscc)) { $iscc = "${env:ProgramFiles}\Inno Setup 6\ISCC.exe" }
+          $iscc = "${env:ProgramFiles(x86)}\\Inno Setup 6\\ISCC.exe"
+          if (!(Test-Path $iscc)) { $iscc = "${env:ProgramFiles}\\Inno Setup 6\\ISCC.exe" }
           if (!(Test-Path $iscc)) { throw "Inno Setup compiler not found." }
-          & $iscc "/DSourceDir=$pwd\artifacts\KlewiCode" "/DModuleDir=$pwd\artifacts\modules" installers/KlewiCode.iss
+          & $iscc "/DSourceDir=$pwd\\artifacts\\KlewiCode" "/DModuleDir=$pwd\\artifacts\\modules" installers/KlewiCode.iss
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
