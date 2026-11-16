@@ -1,0 +1,16 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.terminal-helper",
+  "name": "Terminal Helper",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "terminal-helper"
+  },
+  "permissions": [
+    "filesystem.read"
+  ],
+  "description": "Explain common developer terminal commands and scripts."
+}
