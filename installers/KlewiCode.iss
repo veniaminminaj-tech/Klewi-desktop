@@ -16,12 +16,16 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64
-PrivilegesRequired=lowest
+PrivilegesRequired=admin
 UninstallDisplayIcon={app}\{#AppExeName}
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
-Source: "{#ModuleDir}\*.kcmodule"; DestDir: "{userappdata}\Klewi\ModuleMarket"; Flags: ignoreversion
+Source: "{#ModuleDir}\*.kcmodule"; DestDir: "{userdocs}\Klewi\ModuleMarket"; Flags: ignoreversion
+
+[Dirs]
+Name: "{userdocs}\\Klewi\\ModuleMarket"
+Name: "{userdocs}\\Klewi\\Modules"
 
 [Icons]
 Name: "{group}\Klewi Code"; Filename: "{app}\{#AppExeName}"
