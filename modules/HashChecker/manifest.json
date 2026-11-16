@@ -1,0 +1,16 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.hash-checker",
+  "name": "Hash Checker",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "hash-checker"
+  },
+  "permissions": [
+    "filesystem.read"
+  ],
+  "description": "Calculate file hashes and compare integrity checksums."
+}
