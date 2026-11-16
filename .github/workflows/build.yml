@@ -1,4 +1,4 @@
-name: Build Klewi Desktop and Modules
+name: Build Klewi Desktop and KCMODULE packages
 on:
   push:
     branches: [ main ]
@@ -18,19 +18,21 @@ jobs:
         run: dotnet restore src/KlewiDesktop/KlewiDesktop.csproj
       - name: Build
         run: dotnet build src/KlewiDesktop/KlewiDesktop.csproj --configuration Release --no-restore
-      - name: Publish self-contained Windows app
+      - name: Publish Klewi Desktop
         run: dotnet publish src/KlewiDesktop/KlewiDesktop.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output artifacts/KlewiDesktop
-      - name: Install Inno Setup
-        run: choco install innosetup --yes --no-progress
-      - name: Build Minecraft Studio installer
-        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DSourceDir="$pwd\artifacts\KlewiDesktop" installers\KlewiMinecraftStudio.iss'
-      - name: Build ISO Tools installer
-        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DSourceDir="$pwd\artifacts\KlewiDesktop" installers\KlewiIsoTools.iss'
-      - name: Upload Windows apps and installers
+      - name: Package KCMODULE files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts/modules | Out-Null
+          Compress-Archive -Path modules/MinecraftStudio/* -DestinationPath artifacts/modules/Klewi-MinecraftStudio.zip -Force
+          Move-Item artifacts/modules/Klewi-MinecraftStudio.zip artifacts/modules/Klewi-MinecraftStudio.kcmodule -Force
+          Compress-Archive -Path modules/IsoTools/* -DestinationPath artifacts/modules/Klewi-IsoTools.zip -Force
+          Move-Item artifacts/modules/Klewi-IsoTools.zip artifacts/modules/Klewi-IsoTools.kcmodule -Force
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Klewi-Windows-Installers
+          name: Klewi-Windows-Build
           path: |
             artifacts/KlewiDesktop/
-            artifacts/installers/*.exe
+            artifacts/modules/*.kcmodule
           if-no-files-found: error
