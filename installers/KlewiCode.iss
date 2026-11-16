@@ -4,7 +4,7 @@
 #define AppExeName "KlewiDesktop.exe"
 
 [Setup]
-AppId={{A7B5C2D1-8F41-4C76-9D2E-KEW1C0DE2026}
+AppId={{A7B5C2D1-8F41-4C76-9D2E-4E71C0DE2026}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
@@ -12,7 +12,6 @@ DefaultDirName={autopf}\Klewi Code
 DefaultGroupName=Klewi Code
 OutputDir=..\artifacts\installer
 OutputBaseFilename=Klewi-Code-Setup
-SetupIconFile=
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
