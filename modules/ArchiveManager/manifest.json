@@ -1,0 +1,17 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.archive-manager",
+  "name": "Archive Manager",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "archive-manager"
+  },
+  "permissions": [
+    "filesystem.read",
+    "filesystem.write"
+  ],
+  "description": "Inspect and organize ZIP archives and project packages."
+}
