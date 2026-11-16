@@ -21,11 +21,11 @@ UninstallDisplayIcon={app}\{#AppExeName}
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
-Source: "{#ModuleDir}\*.kcmodule"; DestDir: "{userdocs}\Klewi\ModuleMarket"; Flags: ignoreversion
+Source: "{#ModuleDir}\*.kcmodule"; DestDir: "{app}\ModuleMarket"; Flags: ignoreversion
 
 [Dirs]
-Name: "{userdocs}\Klewi\ModuleMarket"
-Name: "{userdocs}\Klewi\Modules"
+Name: "{app}\ModuleMarket"; Permissions: users-modify
+Name: "{app}\Modules"; Permissions: users-modify
 
 [Icons]
 Name: "{group}\Klewi Code"; Filename: "{app}\{#AppExeName}"
