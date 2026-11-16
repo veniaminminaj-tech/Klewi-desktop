@@ -38,7 +38,7 @@ Klewi can discuss and generate code across a broad range of languages. The chat 
 
 Klewi extensions use the `.kcmodule` package format. A package is a ZIP container with the `.kcmodule` extension and contains a `manifest.json` plus its module payload and documentation. The manifest declares the module ID, display name, version, minimum Klewi version, entry point and permissions. Modules are distributed as packages, not as separate EXE installers.
 
-The first package descriptors are in `modules/MinecraftStudio` and `modules/IsoTools`. The main workspace no longer shows Minecraft Studio or ISO Tools as built-in navigation sections. The current packages establish the format and module metadata; a runtime loader and migration of the existing feature code into independently loadable module assemblies are still pending.
+The repository now contains 25 starter modules: Minecraft Studio, ISO Tools, Code Assistant, Python Lab, Web Builder, Image Lab, Texture Studio, Modpack Manager, Resource Pack Studio, Datapack Studio, Server Manager, Log Analyzer, JSON Tools, Markdown Notes, Git Assistant, File Converter, Archive Manager, Hash Checker, System Info, Task Planner, API Tester, SQL Browser, Regex Lab, Terminal Helper, and Project Templates. The main workspace no longer shows Minecraft Studio or ISO Tools as built-in navigation sections. These packages currently provide validated manifests and starter documentation; their dedicated interfaces and runtime functionality are not all implemented yet. A runtime loader for independently executable third-party module code is still pending.
 
 
 ## One installer and Module Market
