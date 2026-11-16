@@ -15,6 +15,7 @@
      <TextBlock Text="WORKSPACE" Foreground="{StaticResource Muted}" FontSize="10" Margin="5,0,0,8"/>
      <Button x:Name="ChatNavButton" Content="✦  AI Chat" HorizontalContentAlignment="Left" Click="ChatNav_Click"/>
      <Button x:Name="CodeNavButton" Content="⌘  Code Assistant" HorizontalContentAlignment="Left" Click="ChatNav_Click"/>
+     <Button x:Name="MarketplaceNavButton" Content="▦  Module Market" HorizontalContentAlignment="Left" Click="MarketplaceNav_Click"/>
      <Button x:Name="ProjectNavButton" Content="▣  Project" HorizontalContentAlignment="Left" Click="ProjectNav_Click"/>
      <Button x:Name="TerminalNavButton" Content="⌘  Terminal" HorizontalContentAlignment="Left" Click="TerminalNav_Click"/>
      <Button x:Name="SettingsNavButton" Content="⚙  Settings" HorizontalContentAlignment="Left" Click="SettingsNav_Click"/>
@@ -137,6 +138,29 @@
        </Border>
       </StackPanel>
      </ScrollViewer>
+    </Grid>
+    <Grid x:Name="MarketplacePage" Visibility="Collapsed">
+     <StackPanel>
+      <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="18" Margin="0,0,0,14">
+       <StackPanel>
+        <TextBlock Text="Klewi Module Market" FontSize="21" FontWeight="SemiBold"/>
+        <TextBlock Text="Install and manage .kcmodule extensions for Klewi Code. AI chat and code tools are included in Klewi itself." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,14"/>
+        <StackPanel Orientation="Horizontal">
+         <Button Content="Install .kcmodule…" Background="{StaticResource Accent}" Padding="16,9" Click="InstallModule_Click"/>
+         <Button Content="Open modules folder" Padding="16,9" Click="OpenModulesFolder_Click"/>
+         <Button Content="Refresh" Padding="16,9" Click="RefreshModules_Click"/>
+        </StackPanel>
+        <TextBlock x:Name="MarketplaceStatus" Text="Choose a .kcmodule package to install." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+       </StackPanel>
+      </Border>
+      <Border Background="{StaticResource Panel}" CornerRadius="12" Padding="16">
+       <StackPanel>
+        <TextBlock Text="Installed modules" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,10"/>
+        <ListBox x:Name="InstalledModulesList" MinHeight="220" Background="#0B1018" Foreground="{StaticResource MainText}" BorderThickness="0"/>
+        <TextBlock Text="Modules are installed as data packages. Executable plugin loading and an online storefront/catalog are not enabled yet; only validated package installation and listing are available in this build." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+       </StackPanel>
+      </Border>
+     </StackPanel>
     </Grid>
     <Grid x:Name="TerminalPage" Visibility="Collapsed">
      <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
