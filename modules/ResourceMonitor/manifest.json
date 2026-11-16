@@ -1,0 +1,16 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.resource-monitor",
+  "name": "Resource Monitor",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "resource-monitor"
+  },
+  "permissions": [
+    "system.info"
+  ],
+  "description": "View basic process and system resource summaries."
+}
