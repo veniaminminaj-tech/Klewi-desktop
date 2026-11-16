@@ -1,0 +1,17 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.server-manager",
+  "name": "Server Manager",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "server-manager"
+  },
+  "permissions": [
+    "filesystem.read",
+    "filesystem.write"
+  ],
+  "description": "Manage local game-server project files and configuration templates."
+}
