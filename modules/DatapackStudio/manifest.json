@@ -1,0 +1,17 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.datapack-studio",
+  "name": "Datapack Studio",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "datapack-studio"
+  },
+  "permissions": [
+    "filesystem.read",
+    "filesystem.write"
+  ],
+  "description": "Organize Minecraft datapack functions, tags and JSON files."
+}
