@@ -746,13 +746,13 @@ public partial class MainWindow : Window
                 + (projectPath is null ? "" : $"\nWorkspace folder: {projectPath}. Only the attached file content is available; do not claim to have read other files.");
             fullPrompt += "\n\nDesktop cursor control: Only when the user explicitly asks you to move Klewi's separate visual pointer AND supplies exact desktop coordinates, append exactly one marker [[KLEWI_CURSOR:x,y]] to your answer, where x and y are integer screen coordinates. Never invent coordinates, never claim to see the screen, and never request or perform clicks or keyboard input. Otherwise do not output a marker.";
             var answer = await AskProvider(fullPrompt);
-            var cursorCommand = Regex.Match(answer, @"\\[\\[KLEWI_CURSOR:(\\d{1,5}),(\\d{1,5})\\]\\]");
+            var cursorCommand = Regex.Match(answer, @"\[\[KLEWI_CURSOR:(\d{1,5}),(\d{1,5})\]\]");
             if (cursorCommand.Success &&
                 int.TryParse(cursorCommand.Groups[1].Value, out var cursorX) &&
                 int.TryParse(cursorCommand.Groups[2].Value, out var cursorY))
             {
                 mascot?.MoveCursorTo(cursorX, cursorY);
-                answer = Regex.Replace(answer, @"\\s*\\[\\[KLEWI_CURSOR:\\d{1,5},\\d{1,5}\\]\\]", "").Trim();
+                answer = Regex.Replace(answer, @"\s*\[\[KLEWI_CURSOR:\d{1,5},\d{1,5}\]\]", "").Trim();
             }
             pending.Text = answer;
         }
