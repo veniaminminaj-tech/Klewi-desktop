@@ -55,6 +55,8 @@ public partial class MascotWindow : Window
         Closed += (_, _) => { movementTimer.Stop(); speechTimer.Stop(); klewiCursor.Close(); };
     }
 
+    public void MoveCursorTo(double x, double y) => klewiCursor.MoveTo(x, y);
+
     public void Say(string message)
     {
         SpeechText.Text = message;
