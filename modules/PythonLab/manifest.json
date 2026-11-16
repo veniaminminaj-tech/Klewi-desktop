@@ -1,0 +1,17 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.python-lab",
+  "name": "Python Lab",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "python-lab"
+  },
+  "permissions": [
+    "filesystem.read",
+    "filesystem.write"
+  ],
+  "description": "Create and organize Python learning and utility projects."
+}
