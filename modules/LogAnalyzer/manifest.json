@@ -1,0 +1,16 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.log-analyzer",
+  "name": "Log Analyzer",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "log-analyzer"
+  },
+  "permissions": [
+    "filesystem.read"
+  ],
+  "description": "Read and summarize application and build logs."
+}
