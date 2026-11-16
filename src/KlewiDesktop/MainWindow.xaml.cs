@@ -35,7 +35,7 @@ public partial class MainWindow : Window
     private string? selectedIsoPath;
     private string? mountedIsoPath;
     private string? mountedIsoDrive;
-    private readonly string modulesDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Klewi", "Modules");
+    private readonly string modulesDirectory = Path.Combine(AppContext.BaseDirectory, "Modules");
     private string loadedFileContents = "";
     private bool busy;
     private MascotWindow? mascot;
