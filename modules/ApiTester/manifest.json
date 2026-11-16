@@ -1,0 +1,16 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.api-tester",
+  "name": "API Tester",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "api-tester"
+  },
+  "permissions": [
+    "network.http"
+  ],
+  "description": "Prepare and organize HTTP API request collections."
+}
