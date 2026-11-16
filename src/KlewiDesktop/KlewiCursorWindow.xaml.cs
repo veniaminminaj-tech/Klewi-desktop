@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -14,55 +13,75 @@ public partial class KlewiCursorWindow : Window
     private const int WsExToolWindow = 0x80;
     private const int WsExNoActivate = 0x08000000;
 
-    [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "GetWindowLong")]
     private static extern int GetWindowLong(IntPtr hWnd, int index);
-    [DllImport("user32.dll", EntryPoint = "SetWindowLong")]
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowLong")]
     private static extern int SetWindowLong(IntPtr hWnd, int index, int value);
 
-    private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(28) };
-    private readonly Random random = new();
-    private double targetX, targetY;
-    private double speed = 3.2;
+    private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(16) };
+    private double targetLeft;
+    private double targetTop;
+    private bool hasTarget;
 
     public KlewiCursorWindow()
     {
         InitializeComponent();
+
         var area = SystemParameters.WorkArea;
         Left = area.Left + area.Width * 0.35;
         Top = area.Top + area.Height * 0.35;
-        ChooseTarget();
+
         SourceInitialized += (_, _) =>
         {
             var hwnd = new WindowInteropHelper(this).Handle;
             var style = GetWindowLong(hwnd, GwlExStyle);
-            SetWindowLong(hwnd, GwlExStyle, style | WsExTransparent | WsExLayered | WsExToolWindow | WsExNoActivate);
+            SetWindowLong(hwnd, GwlExStyle,
+                style | WsExTransparent | WsExLayered | WsExToolWindow | WsExNoActivate);
         };
+
         timer.Tick += MoveCursor;
-        Loaded += (_, _) => timer.Start();
         Closed += (_, _) => timer.Stop();
     }
 
-    private void ChooseTarget()
+    // x/y are screen coordinates for the cursor tip.
+    public void MoveTo(double screenX, double screenY)
     {
+        if (!double.IsFinite(screenX) || !double.IsFinite(screenY))
+            return;
+
         var area = SystemParameters.WorkArea;
-        targetX = area.Left + 40 + random.NextDouble() * Math.Max(1, area.Width - 100);
-        targetY = area.Top + 40 + random.NextDouble() * Math.Max(1, area.Height - 100);
-        speed = 2.0 + random.NextDouble() * 2.5;
+        targetLeft = Math.Clamp(screenX - 2, area.Left, area.Right - Width);
+        targetTop = Math.Clamp(screenY - 2, area.Top, area.Bottom - Height);
+        hasTarget = true;
+
+        if (!timer.IsEnabled)
+            timer.Start();
     }
 
     private void MoveCursor(object? sender, EventArgs e)
     {
-        var dx = targetX - Left;
-        var dy = targetY - Top;
-        var distance = Math.Sqrt(dx * dx + dy * dy);
-        if (distance < 12)
+        if (!hasTarget)
         {
-            ChooseTarget();
+            timer.Stop();
             return;
         }
-        Left += dx / distance * speed;
-        Top += dy / distance * speed;
+
+        Left += (targetLeft - Left) * 0.22;
+        Top += (targetTop - Top) * 0.22;
+
+        if (Math.Abs(targetLeft - Left) < 0.6 && Math.Abs(targetTop - Top) < 0.6)
+        {
+            Left = targetLeft;
+            Top = targetTop;
+            hasTarget = false;
+            timer.Stop();
+        }
     }
 
-    public void Stop() => timer.Stop();
+    public void Stop()
+    {
+        hasTarget = false;
+        timer.Stop();
+    }
 }
