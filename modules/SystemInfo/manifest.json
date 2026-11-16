@@ -1,0 +1,16 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.system-info",
+  "name": "System Info",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "system-info"
+  },
+  "permissions": [
+    "system.info"
+  ],
+  "description": "Display basic operating-system and runtime information."
+}
