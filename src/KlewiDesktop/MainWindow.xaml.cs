@@ -44,38 +44,9 @@ public partial class MainWindow : Window
         LoadSettings();
         UpdateStatus();
 
-        var moduleArg = Environment.GetCommandLineArgs()
-            .FirstOrDefault(arg => arg.StartsWith("--module=", StringComparison.OrdinalIgnoreCase));
-        var module = moduleArg?.Split('=', 2).LastOrDefault()?.Trim().ToLowerInvariant();
-
-        if (module == "minecraft")
-        {
-            Title = "Klewi Minecraft Studio";
-            ChatNavButton.Visibility = Visibility.Collapsed;
-            CodeNavButton.Visibility = Visibility.Collapsed;
-            ProjectNavButton.Visibility = Visibility.Collapsed;
-            IsoNavButton.Visibility = Visibility.Collapsed;
-            TerminalNavButton.Visibility = Visibility.Collapsed;
-            Navigate("minecraft", "Minecraft Studio", "Standalone Minecraft mod and resource-pack workspace.");
-        }
-        else if (module == "iso")
-        {
-            Title = "Klewi ISO Tools";
-            ChatNavButton.Visibility = Visibility.Collapsed;
-            CodeNavButton.Visibility = Visibility.Collapsed;
-            ProjectNavButton.Visibility = Visibility.Collapsed;
-            MinecraftNavButton.Visibility = Visibility.Collapsed;
-            TerminalNavButton.Visibility = Visibility.Collapsed;
-            SettingsNavButton.Visibility = Visibility.Collapsed;
-            Navigate("iso", "ISO Tools", "Standalone Windows ISO inspection and mounting tools.");
-        }
-
-        if (module is not ("minecraft" or "iso"))
-        {
-            mascot = new MascotWindow(OpenMainFromMascot);
-            mascot.Show();
-            Closed += (_, _) => mascot?.Close();
-        }
+        mascot = new MascotWindow(OpenMainFromMascot);
+        mascot.Show();
+        Closed += (_, _) => mascot?.Close();
     }
 
     private void OpenMainFromMascot()
@@ -98,8 +69,6 @@ public partial class MainWindow : Window
     private void ChatNav_Click(object s, RoutedEventArgs e) => Navigate("chat", "AI Chat", "Ask about code, debug errors, and plan changes.");
     private void ProjectNav_Click(object s, RoutedEventArgs e) => Navigate("project", "Project", "Browse files in your workspace.");
     private void TerminalNav_Click(object s, RoutedEventArgs e) => Navigate("terminal", "Terminal", "Run a limited set of developer commands.");
-    private void MinecraftNav_Click(object s, RoutedEventArgs e) => Navigate("minecraft", "Minecraft Studio", "Create mod and resource-pack plans with AI.");
-    private void IsoNav_Click(object s, RoutedEventArgs e) => Navigate("iso", "ISO Tools", "Inspect and mount Windows installation images.");
 
     private void ChooseMinecraftOutput_Click(object sender, RoutedEventArgs e)
     {
