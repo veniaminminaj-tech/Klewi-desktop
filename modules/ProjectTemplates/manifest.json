@@ -1,0 +1,17 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.project-templates",
+  "name": "Project Templates",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "project-templates"
+  },
+  "permissions": [
+    "filesystem.read",
+    "filesystem.write"
+  ],
+  "description": "Start projects from reusable source-code templates."
+}
