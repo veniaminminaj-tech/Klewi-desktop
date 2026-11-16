@@ -24,8 +24,8 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 Source: "{#ModuleDir}\*.kcmodule"; DestDir: "{userdocs}\Klewi\ModuleMarket"; Flags: ignoreversion
 
 [Dirs]
-Name: "{userdocs}\\Klewi\\ModuleMarket"
-Name: "{userdocs}\\Klewi\\Modules"
+Name: "{userdocs}\Klewi\ModuleMarket"
+Name: "{userdocs}\Klewi\Modules"
 
 [Icons]
 Name: "{group}\Klewi Code"; Filename: "{app}\{#AppExeName}"
