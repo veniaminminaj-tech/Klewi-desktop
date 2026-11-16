@@ -1,0 +1,16 @@
+{
+  "format": "kcmodule",
+  "formatVersion": 1,
+  "id": "klewi.git-assistant",
+  "name": "Git Assistant",
+  "version": "0.1.0",
+  "minimumKlewiVersion": "0.1.0",
+  "entryPoint": {
+    "type": "declarative",
+    "id": "git-assistant"
+  },
+  "permissions": [
+    "filesystem.read"
+  ],
+  "description": "Explain Git status, diffs, branches and commit workflows."
+}
