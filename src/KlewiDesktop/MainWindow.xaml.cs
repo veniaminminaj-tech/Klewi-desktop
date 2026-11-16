@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private string? selectedIsoPath;
     private string? mountedIsoPath;
     private string? mountedIsoDrive;
+    private readonly string modulesDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Klewi", "Modules");
     private string loadedFileContents = "";
     private bool busy;
     private MascotWindow? mascot;
@@ -43,6 +44,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         LoadSettings();
         UpdateStatus();
+        RefreshInstalledModules();
 
         mascot = new MascotWindow(OpenMainFromMascot);
         mascot.Show();
@@ -62,13 +64,95 @@ public partial class MainWindow : Window
         ProjectPage.Visibility = page == "project" ? Visibility.Visible : Visibility.Collapsed;
         MinecraftPage.Visibility = page == "minecraft" ? Visibility.Visible : Visibility.Collapsed;
         IsoPage.Visibility = page == "iso" ? Visibility.Visible : Visibility.Collapsed;
+        MarketplacePage.Visibility = page == "marketplace" ? Visibility.Visible : Visibility.Collapsed;
         TerminalPage.Visibility = page == "terminal" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPage.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
         PageTitle.Text = title; PageSubtitle.Text = subtitle;
     }
     private void ChatNav_Click(object s, RoutedEventArgs e) => Navigate("chat", "AI Chat", "Ask about code, debug errors, and plan changes.");
+    private void MarketplaceNav_Click(object s, RoutedEventArgs e) { Navigate("marketplace", "Module Market", "Install and manage Klewi Code extensions."); RefreshInstalledModules(); }
     private void ProjectNav_Click(object s, RoutedEventArgs e) => Navigate("project", "Project", "Browse files in your workspace.");
     private void TerminalNav_Click(object s, RoutedEventArgs e) => Navigate("terminal", "Terminal", "Run a limited set of developer commands.");
+
+    private void RefreshModules_Click(object sender, RoutedEventArgs e) => RefreshInstalledModules();
+
+    private void OpenModulesFolder_Click(object sender, RoutedEventArgs e)
+    {
+        Directory.CreateDirectory(modulesDirectory);
+        Process.Start(new ProcessStartInfo("explorer.exe", modulesDirectory) { UseShellExecute = true });
+    }
+
+    private void RefreshInstalledModules()
+    {
+        if (InstalledModulesList is null) return;
+        Directory.CreateDirectory(modulesDirectory);
+        InstalledModulesList.Items.Clear();
+        foreach (var directory in Directory.EnumerateDirectories(modulesDirectory).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
+        {
+            var manifestPath = Path.Combine(directory, "manifest.json");
+            if (!File.Exists(manifestPath)) continue;
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(manifestPath));
+                var root = doc.RootElement;
+                var name = root.TryGetProperty("name", out var n) ? n.GetString() : Path.GetFileName(directory);
+                var version = root.TryGetProperty("version", out var v) ? v.GetString() : "?";
+                var id = root.TryGetProperty("id", out var i) ? i.GetString() : "unknown";
+                InstalledModulesList.Items.Add($"{name}  •  v{version}  •  {id}");
+            }
+            catch { InstalledModulesList.Items.Add(Path.GetFileName(directory) + "  •  invalid manifest"); }
+        }
+        if (InstalledModulesList.Items.Count == 0) InstalledModulesList.Items.Add("No modules installed yet.");
+    }
+
+    private void InstallModule_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Title = "Install Klewi module", Filter = "Klewi module (*.kcmodule)|*.kcmodule|All files (*.*)|*.*" };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            using var archive = ZipFile.OpenRead(dialog.FileName);
+            var manifestEntry = archive.GetEntry("manifest.json") ?? throw new InvalidDataException("Package has no root manifest.json.");
+            if (manifestEntry.Length > 64 * 1024) throw new InvalidDataException("Module manifest is too large.");
+            using var manifestStream = manifestEntry.Open();
+            using var doc = JsonDocument.Parse(manifestStream);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("format", out var format) || format.GetString() != "kcmodule")
+                throw new InvalidDataException("Unsupported package format.");
+            var id = root.GetProperty("id").GetString() ?? "";
+            var name = root.GetProperty("name").GetString() ?? "";
+            var version = root.GetProperty("version").GetString() ?? "";
+            if (id.Length is < 3 or > 100 || id.Any(ch => !(char.IsAsciiLetterOrDigit(ch) || ch is '.' or '-' or '_')))
+                throw new InvalidDataException("Invalid module ID.");
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(version))
+                throw new InvalidDataException("Manifest must include name and version.");
+            if (archive.Entries.Count > 500) throw new InvalidDataException("Package contains too many files.");
+            long total = 0;
+            foreach (var entry in archive.Entries)
+            {
+                total += entry.Length;
+                if (entry.Length > 10 * 1024 * 1024 || total > 50 * 1024 * 1024)
+                    throw new InvalidDataException("Package exceeds the 50 MB unpacked size limit.");
+                var normalized = entry.FullName.Replace('\\', '/');
+                if (normalized.StartsWith('/') || normalized.Split('/').Any(p => p == ".." || p == "." || p.Contains(':')))
+                    throw new InvalidDataException("Package contains an unsafe file path.");
+            }
+            Directory.CreateDirectory(modulesDirectory);
+            var target = Path.Combine(modulesDirectory, id);
+            var staging = target + ".installing";
+            if (Directory.Exists(staging)) Directory.Delete(staging, true);
+            ZipFile.ExtractToDirectory(dialog.FileName, staging, true);
+            if (Directory.Exists(target)) Directory.Delete(target, true);
+            Directory.Move(staging, target);
+            MarketplaceStatus.Text = $"Installed {name} v{version}. Note: this build stores modules but does not execute plugin code.";
+            RefreshInstalledModules();
+        }
+        catch (Exception ex)
+        {
+            MarketplaceStatus.Text = "Install failed: " + ex.Message;
+            MessageBox.Show(ex.Message, "Klewi Module Market", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
 
     private void ChooseMinecraftOutput_Click(object sender, RoutedEventArgs e)
     {
